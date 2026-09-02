@@ -26,7 +26,7 @@ export default function PaginaDashboard() {
         setPerfil({ tipo: 'aluno', nome: aluno.nome, turmaNome: aluno.turmas?.nome });
 
         const { data: minhasAtividades, error: erroAtividades } = await supabase
-          .from('atividades')
+          .from('atividades_publicas')
           .select('id, disciplina, aula_numero, tema, data_final, valor_nota')
           .order('data_final');
 
@@ -98,7 +98,14 @@ export default function PaginaDashboard() {
         <div key={a.id} style={{ padding: 14, borderRadius: 10, border: '1.5px solid #eee', marginBottom: 10 }}>
           <p style={{ margin: 0, fontWeight: 'bold', fontSize: 14 }}>{a.disciplina} — Aula {a.aula_numero}</p>
           <p style={{ margin: '4px 0 0 0', fontSize: 13.5 }}>{a.tema}</p>
-          <p style={{ margin: '4px 0 0 0', fontSize: 12, color: '#888' }}>Vale {a.valor_nota} ponto(s)</p>
+          <p style={{ margin: '4px 0 8px 0', fontSize: 12, color: '#888' }}>Vale {a.valor_nota} ponto(s)</p>
+          {perfil.tipo === 'aluno' && (
+            <button
+              onClick={() => router.push('/atividades/' + a.id)}
+              style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: '#6C5CE7', color: 'white', fontWeight: 'bold', fontSize: 13, cursor: 'pointer' }}>
+              Responder
+            </button>
+          )}
         </div>
       ))}
     </main>
