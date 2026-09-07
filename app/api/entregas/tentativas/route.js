@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 // app/api/entregas/tentativas/route.js
 // Confere quantas vezes o aluno logado já respondeu uma atividade —
 // usado ANTES de mostrar o formulário, pra já bloquear de cara se ele
