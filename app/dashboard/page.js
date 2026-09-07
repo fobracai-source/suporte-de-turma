@@ -87,7 +87,7 @@ export default function PaginaDashboard() {
       </div>
 
       {perfil.tipo === 'professor' && (
-        <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
+        <div style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
           <button
             onClick={() => router.push('/professor/criar-atividade')}
             style={{ flex: 1, padding: 14, borderRadius: 8, border: 'none', background: '#6C5CE7', color: 'white', fontWeight: 'bold', fontSize: 13, cursor: 'pointer' }}>
@@ -101,12 +101,27 @@ export default function PaginaDashboard() {
         </div>
       )}
 
-      {perfil.tipo === 'aluno' && (
+      {perfil.tipo === 'professor' && (
         <button
-          onClick={() => router.push('/minhas-notas')}
-          style={{ width: '100%', padding: 14, marginBottom: 20, borderRadius: 8, border: '1.5px solid #6C5CE7', background: 'white', color: '#6C5CE7', fontWeight: 'bold', fontSize: 14, cursor: 'pointer' }}>
-          📊 Minhas notas
+          onClick={() => router.push('/professor/registrar-ocorrencia')}
+          style={{ width: '100%', padding: 14, marginBottom: 20, borderRadius: 8, border: '1.5px solid #FF7A59', background: 'white', color: '#FF7A59', fontWeight: 'bold', fontSize: 13, cursor: 'pointer' }}>
+          🚨 Registrar ocorrência
         </button>
+      )}
+
+      {perfil.tipo === 'aluno' && (
+        <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
+          <button
+            onClick={() => router.push('/minhas-notas')}
+            style={{ flex: 1, padding: 14, borderRadius: 8, border: '1.5px solid #6C5CE7', background: 'white', color: '#6C5CE7', fontWeight: 'bold', fontSize: 13, cursor: 'pointer' }}>
+            📊 Minhas notas
+          </button>
+          <button
+            onClick={() => router.push('/minhas-ocorrencias')}
+            style={{ flex: 1, padding: 14, borderRadius: 8, border: '1.5px solid #FF7A59', background: 'white', color: '#FF7A59', fontWeight: 'bold', fontSize: 13, cursor: 'pointer' }}>
+            🚨 Minhas ocorrências
+          </button>
+        </div>
       )}
 
       {erro && (
