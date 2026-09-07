@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 // app/api/colegas-da-turma/route.js
 // Lista os colegas da MESMA turma de quem está pedindo — só nome e id,
 // NUNCA data de nascimento, telefone ou e-mail (a data de nascimento é
