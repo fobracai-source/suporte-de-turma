@@ -9,24 +9,18 @@ export default function PaginaMinhasOcorrencias() {
   const [ocorrencias, setOcorrencias] = useState([]);
   const [defesasEnviadas, setDefesasEnviadas] = useState({}); // ocorrencia_id -> true
   const [erro, setErro] = useState('');
+  const [accessToken, setAccessToken] = useState('');
 
   const [ocorrenciaAberta, setOcorrenciaAberta] = useState(null);
   const [justificativa, setJustificativa] = useState('');
   const [naoQuerJustificar, setNaoQuerJustificar] = useState(false);
   const [enviando, setEnviando] = useState(false);
-  const [alunoId, setAlunoId] = useState(null);
 
   useEffect(() => {
     async function carregar() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) { router.push('/login'); return; }
-
-      const { data: aluno } = await supabase
-        .from('alunos')
-        .select('id')
-        .eq('auth_user_id', session.user.id)
-        .maybeSingle();
-      if (aluno) setAlunoId(aluno.id);
+      setAccessToken(session.access_token);
 
       // A segurança (RLS) já garante que só vêm as ocorrências do
       // próprio aluno logado.
@@ -55,30 +49,39 @@ export default function PaginaMinhasOcorrencias() {
     setErro('');
   }
 
-  async function enviarDefesa(ocorrencia) {
+  async function enviarDefesa(ocorrenciaId) {
+    setErro('');
     if (!naoQuerJustificar && !justificativa.trim()) {
       setErro('Escreva sua justificativa, ou marque "Não quero justificar".');
       return;
     }
     setEnviando(true);
 
-    const { error } = await supabase.from('defesa_ocorrencias').insert({
-      ocorrencia_id: ocorrencia.id,
-      aluno_id: alunoId,
-      turma_id: ocorrencia.turma_id,
-      justificativa: naoQuerJustificar ? '' : justificativa.trim(),
-      nao_quis_justificar: naoQuerJustificar
-    });
+    try {
+      const resposta = await fetch('/api/defesa-ocorrencia', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+        body: JSON.stringify({
+          ocorrenciaId,
+          justificativa,
+          naoQuisJustificar: naoQuerJustificar
+        })
+      });
+      const dados = await resposta.json();
 
-    if (error) {
-      setErro(error.message);
+      if (!dados.ok) {
+        setErro(dados.erro || 'Não foi possível enviar.');
+        setEnviando(false);
+        return;
+      }
+
+      setDefesasEnviadas((atual) => ({ ...atual, [ocorrenciaId]: true }));
+      setOcorrenciaAberta(null);
       setEnviando(false);
-      return;
+    } catch (e) {
+      setErro('Erro inesperado: ' + e.message);
+      setEnviando(false);
     }
-
-    setDefesasEnviadas((atual) => ({ ...atual, [ocorrencia.id]: true }));
-    setOcorrenciaAberta(null);
-    setEnviando(false);
   }
 
   if (carregando) return <main style={{ maxWidth: 480, margin: '60px auto', textAlign: 'center' }}>Carregando...</main>;
@@ -136,7 +139,7 @@ export default function PaginaMinhasOcorrencias() {
                   Não quero justificar
                 </label>
                 <div style={{ display: 'flex', gap: 8 }}>
-                  <button onClick={() => enviarDefesa(oc)} disabled={enviando} style={{ flex: 1, padding: 10, borderRadius: 8, border: 'none', background: '#6C5CE7', color: 'white', fontWeight: 'bold', fontSize: 13, cursor: 'pointer' }}>
+                  <button onClick={() => enviarDefesa(oc.id)} disabled={enviando} style={{ flex: 1, padding: 10, borderRadius: 8, border: 'none', background: '#6C5CE7', color: 'white', fontWeight: 'bold', fontSize: 13, cursor: 'pointer' }}>
                     {enviando ? 'Enviando...' : 'Enviar'}
                   </button>
                   <button onClick={() => setOcorrenciaAberta(null)} style={{ padding: '10px 16px', borderRadius: 8, border: '1.5px solid #ddd', background: 'white', color: '#555', fontSize: 13, cursor: 'pointer' }}>
