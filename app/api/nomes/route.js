@@ -1,10 +1,12 @@
 // app/api/nomes/route.js
-// Pública de propósito — só mostra NOMES, nada sensível (nunca a data
-// de nascimento nem qualquer outro dado). Alimenta o segundo dropdown
-// da tela de login (depois de escolher turma, ou pra professor).
+// Pública de propósito — só mostra NOMES, nada sensível. Alimenta o
+// segundo dropdown da tela de login (depois de escolher turma, ou pra
+// professor).
 //
 // Uso: /api/nomes?tipo=aluno&turmaId=3
 //      /api/nomes?tipo=professor
+export const dynamic = 'force-dynamic';
+
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
 
