@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 // app/api/professor/minhas-turmas-disciplinas/route.js
 // Devolve as disciplinas e turmas vinculadas ao professor que está
 // fazendo a requisição — identificado pelo token de sessão dele, nunca
