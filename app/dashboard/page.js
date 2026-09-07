@@ -160,11 +160,18 @@ export default function PaginaDashboard() {
       )}
 
       {perfil.tipo === 'professor' && (
-        <button
-          onClick={() => router.push('/professor/registrar-ocorrencia')}
-          style={{ width: '100%', padding: 14, marginBottom: 20, borderRadius: 8, border: '1.5px solid #FF7A59', background: 'white', color: '#FF7A59', fontWeight: 'bold', fontSize: 13, cursor: 'pointer' }}>
-          🚨 Registrar ocorrência
-        </button>
+        <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
+          <button
+            onClick={() => router.push('/professor/registrar-ocorrencia')}
+            style={{ flex: 1, padding: 14, borderRadius: 8, border: '1.5px solid #FF7A59', background: 'white', color: '#FF7A59', fontWeight: 'bold', fontSize: 13, cursor: 'pointer' }}>
+            🚨 Registrar ocorrência
+          </button>
+          <button
+            onClick={() => router.push('/professor/ver-ocorrencias')}
+            style={{ flex: 1, padding: 14, borderRadius: 8, border: '1.5px solid #FF7A59', background: 'white', color: '#FF7A59', fontWeight: 'bold', fontSize: 13, cursor: 'pointer' }}>
+            📋 Ver ocorrências
+          </button>
+        </div>
       )}
 
       {perfil.tipo === 'aluno' && (
