@@ -26,7 +26,7 @@ export default function PaginaMinhasOcorrencias() {
       // próprio aluno logado.
       const { data, error } = await supabase
         .from('ocorrencias')
-        .select('id, turma_id, tipo, motivos_atividades, motivos_disciplina, detalhamento, professor_nome, criado_em')
+        .select('id, turma_id, tipo, disciplina, motivos_atividades, motivos_disciplina, detalhamento, professor_nome, criado_em')
         .order('criado_em', { ascending: false });
 
       if (error) { setErro(error.message); setCarregando(false); return; }
@@ -112,7 +112,9 @@ export default function PaginaMinhasOcorrencias() {
 
         return (
           <div key={oc.id} style={{ padding: 14, borderRadius: 10, border: '1.5px solid #eee', marginBottom: 10 }}>
-            <p style={{ margin: 0, fontWeight: 'bold', fontSize: 13, color: '#FF7A59' }}>{oc.professor_nome}</p>
+            <p style={{ margin: 0, fontWeight: 'bold', fontSize: 13, color: '#FF7A59' }}>
+              {oc.disciplina ? `Professor(a) de ${oc.disciplina} — ${oc.professor_nome}` : oc.professor_nome}
+            </p>
             <p style={{ margin: '4px 0 0 0', fontSize: 11, color: '#aaa' }}>{new Date(oc.criado_em).toLocaleString('pt-BR')}</p>
             <div style={{ marginTop: 8 }}>
               {motivos.map((m, i) => (
