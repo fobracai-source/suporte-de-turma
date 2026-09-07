@@ -2,13 +2,14 @@
 //
 // Recebe as respostas do aluno, confere com o gabarito de VERDADE (lido
 // aqui, no servidor — nunca enviado pro navegador), calcula a nota, e
-// grava a entrega. Confirma também que quem está enviando é dono da
-// própria entrega (não dá pra um aluno enviar resposta em nome de
-// outro, mesmo manipulando a requisição).
+// grava a entrega. Permite no máximo 3 tentativas por atividade — a
+// nota final mostrada é a MÉDIA de todas as tentativas feitas.
 
 import { createClient } from '@supabase/supabase-js';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
+
+const LIMITE_TENTATIVAS = 3;
 
 export async function POST(req) {
   const authHeader = req.headers.get('authorization') || '';
@@ -43,6 +44,23 @@ export async function POST(req) {
     return NextResponse.json({ ok: false, erro: 'Atividade não informada.' }, { status: 400 });
   }
 
+  // Confere quantas vezes o aluno JÁ respondeu essa atividade — se já
+  // chegou no limite, bloqueia aqui, sem nem chegar a gravar nada novo.
+  const { data: tentativasAnteriores, error: erroContagem } = await supabaseAdmin
+    .from('entregas')
+    .select('id, nota_calculada, criado_em')
+    .eq('aluno_id', aluno.id)
+    .eq('atividade_id', atividadeId)
+    .order('criado_em', { ascending: true });
+
+  if (erroContagem) {
+    return NextResponse.json({ ok: false, erro: erroContagem.message }, { status: 500 });
+  }
+
+  if ((tentativasAnteriores || []).length >= LIMITE_TENTATIVAS) {
+    return NextResponse.json({ ok: false, erro: 'Você já respondeu!', jaAtingiuMaximo: true }, { status: 403 });
+  }
+
   // Só agora, no servidor, lemos o gabarito de verdade
   const { data: atividade } = await supabaseAdmin
     .from('atividades')
@@ -55,7 +73,7 @@ export async function POST(req) {
   }
 
   const gabarito = atividade.gabarito || [];
-  let notaCalculada = null;
+  let notaDestaTentativa = null;
 
   if (gabarito.length > 0) {
     let acertos = 0;
@@ -63,7 +81,7 @@ export async function POST(req) {
       const respostaAluno = String((respostas || [])[indice] || '').trim().toUpperCase();
       if (respostaAluno === String(respostaCerta).trim().toUpperCase()) acertos++;
     });
-    notaCalculada = Math.round((acertos / gabarito.length) * atividade.valor_nota * 100) / 100;
+    notaDestaTentativa = Math.round((acertos / gabarito.length) * atividade.valor_nota * 100) / 100;
   }
 
   const { data: entregaCriada, error: erroGravar } = await supabaseAdmin
@@ -74,7 +92,7 @@ export async function POST(req) {
       respostas: respostas || [],
       avaliacao: avaliacao || null,
       observacoes: observacoes || null,
-      nota_calculada: notaCalculada
+      nota_calculada: notaDestaTentativa
     })
     .select()
     .single();
@@ -83,10 +101,24 @@ export async function POST(req) {
     return NextResponse.json({ ok: false, erro: erroGravar.message }, { status: 500 });
   }
 
+  // Monta a lista de notas de TODAS as tentativas (as antigas + essa
+  // nova agora) e calcula a média — é essa média que vale como nota
+  // final da atividade.
+  const todasAsNotas = [...(tentativasAnteriores || []).map((t) => t.nota_calculada), notaDestaTentativa];
+  let notaMedia = null;
+  if (gabarito.length > 0) {
+    const somaNotas = todasAsNotas.reduce((soma, n) => soma + (n || 0), 0);
+    notaMedia = Math.round((somaNotas / todasAsNotas.length) * 100) / 100;
+  }
+
   return NextResponse.json({
     ok: true,
-    notaCalculada: notaCalculada,
+    notaDestaTentativa: notaDestaTentativa,
+    tentativas: todasAsNotas,
+    numeroDestaTentativa: todasAsNotas.length,
+    notaMedia: notaMedia,
     valorNota: atividade.valor_nota,
-    numQuestoes: gabarito.length
+    numQuestoes: gabarito.length,
+    aindaPodeTentar: todasAsNotas.length < LIMITE_TENTATIVAS
   });
 }
