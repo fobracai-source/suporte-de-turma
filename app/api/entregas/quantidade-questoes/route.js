@@ -1,7 +1,6 @@
 // app/api/entregas/quantidade-questoes/route.js
 // Devolve só o NÚMERO de questões de uma atividade — nunca o
-// conteúdo do gabarito. É assim que a tela do aluno sabe quantos
-// botões de resposta desenhar, sem nunca ver a resposta certa.
+// conteúdo do gabarito.
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
 
