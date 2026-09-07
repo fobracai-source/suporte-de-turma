@@ -87,10 +87,25 @@ export default function PaginaDashboard() {
       </div>
 
       {perfil.tipo === 'professor' && (
+        <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
+          <button
+            onClick={() => router.push('/professor/criar-atividade')}
+            style={{ flex: 1, padding: 14, borderRadius: 8, border: 'none', background: '#6C5CE7', color: 'white', fontWeight: 'bold', fontSize: 13, cursor: 'pointer' }}>
+            ➕ Cadastrar atividade
+          </button>
+          <button
+            onClick={() => router.push('/professor/ver-entregas')}
+            style={{ flex: 1, padding: 14, borderRadius: 8, border: '1.5px solid #6C5CE7', background: 'white', color: '#6C5CE7', fontWeight: 'bold', fontSize: 13, cursor: 'pointer' }}>
+            📋 Ver entregas
+          </button>
+        </div>
+      )}
+
+      {perfil.tipo === 'aluno' && (
         <button
-          onClick={() => router.push('/professor/criar-atividade')}
-          style={{ width: '100%', padding: 14, marginBottom: 20, borderRadius: 8, border: 'none', background: '#6C5CE7', color: 'white', fontWeight: 'bold', fontSize: 14, cursor: 'pointer' }}>
-          ➕ Cadastrar nova atividade
+          onClick={() => router.push('/minhas-notas')}
+          style={{ width: '100%', padding: 14, marginBottom: 20, borderRadius: 8, border: '1.5px solid #6C5CE7', background: 'white', color: '#6C5CE7', fontWeight: 'bold', fontSize: 14, cursor: 'pointer' }}>
+          📊 Minhas notas
         </button>
       )}
 
