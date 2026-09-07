@@ -27,6 +27,11 @@ export default function PaginaAdmin() {
   const [nomeAluno, setNomeAluno] = useState('');
   const [turmaDoAluno, setTurmaDoAluno] = useState('');
 
+  // Importação em lote
+  const [arquivoImportacao, setArquivoImportacao] = useState(null);
+  const [nomeArquivoImportacao, setNomeArquivoImportacao] = useState('');
+  const [resultadoImportacao, setResultadoImportacao] = useState(null);
+
   const [enviando, setEnviando] = useState(false);
 
   useEffect(() => {
@@ -103,6 +108,37 @@ export default function PaginaAdmin() {
     }
   }
 
+  function arquivoEscolhido(inputEl) {
+    const arquivo = inputEl.files[0];
+    if (!arquivo) return;
+    setNomeArquivoImportacao(arquivo.name);
+    setResultadoImportacao(null);
+    const leitor = new FileReader();
+    leitor.onload = (evento) => setArquivoImportacao(evento.target.result.split(',')[1]);
+    leitor.readAsDataURL(arquivo);
+  }
+
+  async function importarPlanilha() {
+    if (!arquivoImportacao) { setErro('Escolha o arquivo da planilha primeiro.'); return; }
+    setErro(''); setSucesso(''); setResultadoImportacao(null); setEnviando(true);
+    try {
+      const resposta = await fetch('/api/admin/importar-alunos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+        body: JSON.stringify({ arquivoBase64: arquivoImportacao })
+      });
+      const dados = await resposta.json();
+      setEnviando(false);
+      if (!dados.ok) { setErro(dados.erro); return; }
+      setResultadoImportacao(dados);
+      const { data: t } = await supabase.from('turmas').select('id, nome').order('nome');
+      setTurmas(t || []);
+    } catch (e) {
+      setEnviando(false);
+      setErro('Erro inesperado: ' + e.message);
+    }
+  }
+
   const estiloCampo = { width: '100%', padding: 12, marginBottom: 14, borderRadius: 8, border: '1.5px solid #ddd', fontSize: 15, boxSizing: 'border-box' };
   const estiloRotulo = { display: 'block', fontWeight: 'bold', fontSize: 13, marginBottom: 6, color: '#333' };
   const estiloBotao = { width: '100%', padding: 14, borderRadius: 8, border: 'none', background: '#6C5CE7', color: 'white', fontWeight: 'bold', fontSize: 15, cursor: 'pointer' };
@@ -134,6 +170,7 @@ export default function PaginaAdmin() {
         <button onClick={() => { setAba('turma'); setErro(''); setSucesso(''); }} style={estiloAba(aba === 'turma')}>Turma</button>
         <button onClick={() => { setAba('professor'); setErro(''); setSucesso(''); }} style={estiloAba(aba === 'professor')}>Professor</button>
         <button onClick={() => { setAba('aluno'); setErro(''); setSucesso(''); }} style={estiloAba(aba === 'aluno')}>Aluno</button>
+        <button onClick={() => { setAba('importar'); setErro(''); setSucesso(''); }} style={estiloAba(aba === 'importar')}>Importar</button>
       </div>
 
       {erro && <div style={{ background: '#FFEDEA', color: '#C93B26', padding: 12, borderRadius: 8, marginBottom: 14, fontSize: 13.5 }}>⚠️ {erro}</div>}
@@ -191,6 +228,41 @@ export default function PaginaAdmin() {
           </p>
 
           <button onClick={criarAluno} disabled={enviando} style={estiloBotao}>{enviando ? 'Cadastrando...' : 'Cadastrar aluno(a)'}</button>
+        </div>
+      )}
+
+      {aba === 'importar' && (
+        <div>
+          <div style={{ background: '#F4F2FF', color: '#4E3FC7', padding: 12, borderRadius: 8, marginBottom: 16, fontSize: 12.5, lineHeight: 1.6 }}>
+            📄 A planilha deve ter as colunas: <b>NOME DO ALUNO, TURMA, EMAIL_MAIS_RECENTE, EMAIL_ANTERIOR, MATRICULA, TELEFONE_CONTATO, DATA_NASCIMENTO, EMAIL_FAMILIA, DONO_EMAIL_FAMILIA, OBSERVACAO</b> (nessa ordem).
+            <br /><br />
+            O nome só é alterado por aqui (nunca pelo próprio aluno). Os demais campos: se vierem preenchidos na planilha, substituem o que já está salvo; se vierem em branco, o que já existe é mantido.
+          </div>
+
+          <input type="file" id="inputImportacao" accept=".xlsx,.xls" style={{ display: 'none' }} onChange={(e) => arquivoEscolhido(e.target)} />
+          <div onClick={() => document.getElementById('inputImportacao').click()} style={{ border: '2px dashed #ddd', borderRadius: 10, padding: 24, textAlign: 'center', cursor: 'pointer', marginBottom: 16 }}>
+            <div style={{ fontSize: 32 }}>📤</div>
+            <div style={{ fontWeight: 'bold', fontSize: 13, marginTop: 6 }}>{nomeArquivoImportacao || 'Toque para escolher a planilha'}</div>
+          </div>
+
+          <button onClick={importarPlanilha} disabled={enviando} style={estiloBotao}>{enviando ? 'Importando...' : 'Importar planilha'}</button>
+
+          {resultadoImportacao && (
+            <div style={{ marginTop: 18, background: '#F8F8F8', borderRadius: 10, padding: 16, fontSize: 13 }}>
+              <p style={{ margin: '0 0 6px 0' }}>✅ <b>{resultadoImportacao.criados}</b> aluno(s) novo(s) criado(s)</p>
+              <p style={{ margin: '0 0 6px 0' }}>🔄 <b>{resultadoImportacao.atualizados}</b> aluno(s) já existente(s) atualizado(s)</p>
+              <p style={{ margin: '0 0 6px 0' }}>⏭️ <b>{resultadoImportacao.pulados}</b> linha(s) sem nome, ignorada(s)</p>
+              {resultadoImportacao.turmasCriadas.length > 0 && (
+                <p style={{ margin: '0 0 6px 0' }}>🏫 Turma(s) criada(s) automaticamente: {resultadoImportacao.turmasCriadas.join(', ')}</p>
+              )}
+              {resultadoImportacao.erros.length > 0 && (
+                <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid #ddd' }}>
+                  <p style={{ margin: '0 0 6px 0', fontWeight: 'bold', color: '#C93B26' }}>⚠️ Avisos:</p>
+                  {resultadoImportacao.erros.map((e, i) => <p key={i} style={{ margin: '2px 0', fontSize: 12, color: '#C93B26' }}>{e}</p>)}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
     </main>
