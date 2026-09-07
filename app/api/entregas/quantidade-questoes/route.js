@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 // app/api/entregas/quantidade-questoes/route.js
 // Devolve só o NÚMERO de questões de uma atividade — nunca o
 // conteúdo do gabarito.
