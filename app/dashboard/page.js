@@ -9,6 +9,10 @@ export default function PaginaDashboard() {
   const [perfil, setPerfil] = useState(null); // { tipo: 'aluno'|'professor', nome, turmaNome }
   const [atividades, setAtividades] = useState([]);
   const [erro, setErro] = useState('');
+  const [camposPendentes, setCamposPendentes] = useState([]);
+  const [mostrarFormPendente, setMostrarFormPendente] = useState(false);
+  const [valoresPendentes, setValoresPendentes] = useState({});
+  const [salvandoPendente, setSalvandoPendente] = useState(false);
 
   useEffect(() => {
     async function carregar() {
@@ -18,12 +22,16 @@ export default function PaginaDashboard() {
       // Descobre se quem está logado é aluno ou professor, e pega o nome
       const { data: aluno } = await supabase
         .from('alunos')
-        .select('nome, turmas(nome)')
+        .select('nome, turmas(nome), matricula, telefone, email_aluno, email_familia, dono_email_familia')
         .eq('auth_user_id', session.user.id)
         .maybeSingle();
 
       if (aluno) {
         setPerfil({ tipo: 'aluno', nome: aluno.nome, turmaNome: aluno.turmas?.nome });
+
+        const camposParaChecar = { matricula: aluno.matricula, telefone: aluno.telefone, emailAluno: aluno.email_aluno, emailFamilia: aluno.email_familia, donoEmailFamilia: aluno.dono_email_familia };
+        const pendentes = Object.entries(camposParaChecar).filter(([, v]) => !v || v === 'Depois informo').map(([k]) => k);
+        setCamposPendentes(pendentes);
 
         const { data: minhasAtividades, error: erroAtividades } = await supabase
           .from('atividades_publicas')
@@ -62,6 +70,21 @@ export default function PaginaDashboard() {
     router.push('/login');
   }
 
+  async function salvarPendentes() {
+    setSalvandoPendente(true);
+    const { data: { session } } = await supabase.auth.getSession();
+    const resposta = await fetch('/api/completar-cadastro-aluno', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+      body: JSON.stringify(valoresPendentes)
+    });
+    const dados = await resposta.json();
+    setSalvandoPendente(false);
+    if (dados.ok) window.location.reload();
+  }
+
+  const rotulosCampos = { matricula: 'Matrícula', telefone: 'Telefone', emailAluno: 'Seu e-mail', emailFamilia: 'E-mail da família', donoEmailFamilia: 'De quem é o e-mail de família' };
+
   if (carregando) {
     return <main style={{ maxWidth: 480, margin: '60px auto', textAlign: 'center' }}>Carregando...</main>;
   }
@@ -85,6 +108,41 @@ export default function PaginaDashboard() {
         </div>
         <button onClick={sair} style={{ padding: '8px 14px', borderRadius: 8, border: '1.5px solid #ddd', background: 'white', cursor: 'pointer' }}>Sair</button>
       </div>
+
+      {perfil.tipo === 'aluno' && camposPendentes.length > 0 && (
+        <div style={{ background: '#FFF8E1', borderRadius: 10, padding: 14, marginBottom: 16 }}>
+          {!mostrarFormPendente ? (
+            <>
+              <p style={{ margin: 0, fontSize: 13, color: '#8A6D1E' }}>
+                📋 Ainda falta completar {camposPendentes.length} informação(ões) do seu cadastro.
+              </p>
+              <button onClick={() => setMostrarFormPendente(true)} style={{ marginTop: 8, padding: '6px 14px', borderRadius: 6, border: 'none', background: '#F2C94C', color: '#8A6D1E', fontWeight: 'bold', fontSize: 12, cursor: 'pointer' }}>
+                Completar agora
+              </button>
+            </>
+          ) : (
+            <>
+              {camposPendentes.map((campo) => (
+                <div key={campo} style={{ marginBottom: 10 }}>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 'bold', color: '#8A6D1E', marginBottom: 4 }}>{rotulosCampos[campo]}</label>
+                  <input
+                    type="text"
+                    placeholder="Deixe em branco pra responder depois"
+                    onChange={(e) => setValoresPendentes((atual) => ({ ...atual, [campo]: e.target.value }))}
+                    style={{ width: '100%', padding: 9, borderRadius: 6, border: '1.5px solid #E8D9A0', fontSize: 13, boxSizing: 'border-box' }}
+                  />
+                </div>
+              ))}
+              <button onClick={salvarPendentes} disabled={salvandoPendente} style={{ padding: '8px 16px', borderRadius: 6, border: 'none', background: '#F2C94C', color: '#8A6D1E', fontWeight: 'bold', fontSize: 12.5, cursor: 'pointer', marginRight: 8 }}>
+                {salvandoPendente ? 'Salvando...' : 'Salvar'}
+              </button>
+              <button onClick={() => setMostrarFormPendente(false)} style={{ padding: '8px 16px', borderRadius: 6, border: '1.5px solid #E8D9A0', background: 'transparent', color: '#8A6D1E', fontSize: 12.5, cursor: 'pointer' }}>
+                Depois
+              </button>
+            </>
+          )}
+        </div>
+      )}
 
       {perfil.tipo === 'professor' && (
         <div style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
