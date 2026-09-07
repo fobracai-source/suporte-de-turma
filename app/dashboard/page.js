@@ -86,6 +86,14 @@ export default function PaginaDashboard() {
         <button onClick={sair} style={{ padding: '8px 14px', borderRadius: 8, border: '1.5px solid #ddd', background: 'white', cursor: 'pointer' }}>Sair</button>
       </div>
 
+      {perfil.tipo === 'professor' && (
+        <button
+          onClick={() => router.push('/professor/criar-atividade')}
+          style={{ width: '100%', padding: 14, marginBottom: 20, borderRadius: 8, border: 'none', background: '#6C5CE7', color: 'white', fontWeight: 'bold', fontSize: 14, cursor: 'pointer' }}>
+          ➕ Cadastrar nova atividade
+        </button>
+      )}
+
       {erro && (
         <div style={{ background: '#FFEDEA', color: '#C93B26', padding: 12, borderRadius: 8, marginBottom: 14, fontSize: 13.5 }}>
           ⚠️ {erro}
