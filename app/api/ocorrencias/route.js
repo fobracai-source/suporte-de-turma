@@ -33,10 +33,13 @@ export async function POST(req) {
     return NextResponse.json({ ok: false, erro: 'Essa conta não é de um professor.' }, { status: 403 });
   }
 
-  const { turmaId, alunoId, motivosAtividades, motivosDisciplina, detalhamento } = await req.json();
+  const { turmaId, alunoId, disciplina, motivosAtividades, motivosDisciplina, detalhamento } = await req.json();
 
   if (!turmaId || !alunoId) {
     return NextResponse.json({ ok: false, erro: 'Selecione a turma e o aluno.' }, { status: 400 });
+  }
+  if (!disciplina) {
+    return NextResponse.json({ ok: false, erro: 'Selecione a disciplina.' }, { status: 400 });
   }
   if ((!motivosAtividades || motivosAtividades.length === 0) && (!motivosDisciplina || motivosDisciplina.length === 0)) {
     return NextResponse.json({ ok: false, erro: 'Selecione pelo menos um motivo.' }, { status: 400 });
@@ -66,6 +69,18 @@ export async function POST(req) {
     return NextResponse.json({ ok: false, erro: 'Esse aluno não pertence a essa turma.' }, { status: 400 });
   }
 
+  // Confere que a disciplina escolhida é mesmo do professor
+  const { data: disciplinaDele } = await supabaseAdmin
+    .from('professor_disciplinas')
+    .select('disciplina')
+    .eq('professor_id', professor.id)
+    .eq('disciplina', disciplina)
+    .maybeSingle();
+
+  if (!disciplinaDele) {
+    return NextResponse.json({ ok: false, erro: 'Essa disciplina não está vinculada ao seu cadastro.' }, { status: 403 });
+  }
+
   const tipoTexto = [];
   if (motivosAtividades && motivosAtividades.length > 0) tipoTexto.push('Atividades');
   if (motivosDisciplina && motivosDisciplina.length > 0) tipoTexto.push('Disciplina');
@@ -75,6 +90,7 @@ export async function POST(req) {
     .insert({
       turma_id: turmaId,
       aluno_id: alunoId,
+      disciplina: disciplina,
       tipo: tipoTexto.join(' e '),
       motivos_atividades: motivosAtividades || [],
       motivos_disciplina: motivosDisciplina || [],
