@@ -6,7 +6,7 @@ import { supabase } from '@/lib/supabaseClient';
 export default function PaginaMinhasNotas() {
   const router = useRouter();
   const [carregando, setCarregando] = useState(true);
-  const [entregas, setEntregas] = useState([]);
+  const [atividadesAgrupadas, setAtividadesAgrupadas] = useState([]);
   const [erro, setErro] = useState('');
   const [mediaGeral, setMediaGeral] = useState(null);
 
@@ -15,12 +15,10 @@ export default function PaginaMinhasNotas() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) { router.push('/login'); return; }
 
-      // A segurança (RLS) já garante que só vêm as entregas do próprio
-      // aluno logado — não precisa filtrar nada aqui manualmente.
       const { data, error } = await supabase
         .from('entregas')
-        .select('id, nota_calculada, avaliacao, criado_em, atividades(disciplina, aula_numero, tema, valor_nota)')
-        .order('criado_em', { ascending: false });
+        .select('id, atividade_id, nota_calculada, criado_em, atividades(disciplina, aula_numero, tema, valor_nota)')
+        .order('criado_em', { ascending: true });
 
       if (error) {
         setErro(error.message);
@@ -28,13 +26,31 @@ export default function PaginaMinhasNotas() {
         return;
       }
 
-      setEntregas(data || []);
+      const porAtividade = {};
+      (data || []).forEach((e) => {
+        if (!porAtividade[e.atividade_id]) {
+          porAtividade[e.atividade_id] = { atividade: e.atividades, tentativas: [] };
+        }
+        porAtividade[e.atividade_id].tentativas.push(e.nota_calculada);
+      });
 
-      var comNota = (data || []).filter((e) => e.nota_calculada !== null);
+      const lista = Object.values(porAtividade).map((grupo) => {
+        const temNota = grupo.tentativas.some((n) => n !== null);
+        let media = null;
+        if (temNota) {
+          const soma = grupo.tentativas.reduce((s, n) => s + (n || 0), 0);
+          media = Math.round((soma / grupo.tentativas.length) * 100) / 100;
+        }
+        return { ...grupo, media, temNota };
+      });
+
+      setAtividadesAgrupadas(lista);
+
+      const comNota = lista.filter((l) => l.temNota);
       if (comNota.length > 0) {
-        var somaPercentual = comNota.reduce((soma, e) => {
-          var valorMax = e.atividades?.valor_nota || 1;
-          return soma + (e.nota_calculada / valorMax);
+        const somaPercentual = comNota.reduce((soma, l) => {
+          const valorMax = l.atividade?.valor_nota || 1;
+          return soma + (l.media / valorMax);
         }, 0);
         setMediaGeral(Math.round((somaPercentual / comNota.length) * 1000) / 10);
       }
@@ -68,28 +84,33 @@ export default function PaginaMinhasNotas() {
         </div>
       )}
 
-      {entregas.length === 0 && <p style={{ color: '#888', fontSize: 14 }}>Você ainda não respondeu nenhuma atividade.</p>}
+      {atividadesAgrupadas.length === 0 && <p style={{ color: '#888', fontSize: 14 }}>Você ainda não respondeu nenhuma atividade.</p>}
 
-      {entregas.map((e) => {
-        const atividade = e.atividades || {};
-        const temNota = e.nota_calculada !== null && e.nota_calculada !== undefined;
-        const percentual = temNota && atividade.valor_nota ? (e.nota_calculada / atividade.valor_nota) : null;
+      {atividadesAgrupadas.map((grupo, indice) => {
+        const atividade = grupo.atividade || {};
+        const percentual = grupo.temNota && atividade.valor_nota ? (grupo.media / atividade.valor_nota) : null;
         const cor = percentual !== null ? (percentual >= 0.6 ? '#2ECC71' : '#FF5C5C') : '#888';
 
         return (
-          <div key={e.id} style={{ padding: 14, borderRadius: 10, border: '1.5px solid #eee', marginBottom: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div>
-              <p style={{ margin: 0, fontWeight: 'bold', fontSize: 14 }}>{atividade.disciplina} — Aula {atividade.aula_numero}</p>
-              <p style={{ margin: '4px 0 0 0', fontSize: 13 }}>{atividade.tema}</p>
-              <p style={{ margin: '4px 0 0 0', fontSize: 11, color: '#aaa' }}>{new Date(e.criado_em).toLocaleDateString('pt-BR')}</p>
+          <div key={indice} style={{ padding: 14, borderRadius: 10, border: '1.5px solid #eee', marginBottom: 10 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <p style={{ margin: 0, fontWeight: 'bold', fontSize: 14 }}>{atividade.disciplina} — Aula {atividade.aula_numero}</p>
+                <p style={{ margin: '4px 0 0 0', fontSize: 13 }}>{atividade.tema}</p>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                {grupo.temNota ? (
+                  <p style={{ margin: 0, fontWeight: 'bold', fontSize: 20, color: cor }}>{grupo.media}/{atividade.valor_nota}</p>
+                ) : (
+                  <p style={{ margin: 0, fontSize: 12, color: '#888' }}>Em avaliação</p>
+                )}
+              </div>
             </div>
-            <div style={{ textAlign: 'right' }}>
-              {temNota ? (
-                <p style={{ margin: 0, fontWeight: 'bold', fontSize: 20, color: cor }}>{e.nota_calculada}/{atividade.valor_nota}</p>
-              ) : (
-                <p style={{ margin: 0, fontSize: 12, color: '#888' }}>Em avaliação</p>
-              )}
-            </div>
+            {grupo.tentativas.length > 1 && (
+              <p style={{ margin: '10px 0 0 0', fontSize: 11.5, color: '#aaa' }}>
+                {grupo.tentativas.length} tentativa(s): {grupo.tentativas.map((n) => n !== null ? n : '—').join(' · ')} (nota mostrada = média)
+              </p>
+            )}
           </div>
         );
       })}
