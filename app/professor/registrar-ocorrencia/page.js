@@ -8,6 +8,8 @@ export default function PaginaRegistrarOcorrencia() {
   const [carregando, setCarregando] = useState(true);
   const [accessToken, setAccessToken] = useState('');
   const [turmas, setTurmas] = useState([]);
+  const [disciplinas, setDisciplinas] = useState([]);
+  const [disciplina, setDisciplina] = useState('');
   const [tiposAtividade, setTiposAtividade] = useState([]);
   const [tiposDisciplina, setTiposDisciplina] = useState([]);
 
@@ -32,7 +34,10 @@ export default function PaginaRegistrarOcorrencia() {
         headers: { Authorization: `Bearer ${session.access_token}` }
       });
       const dados = await resposta.json();
-      if (dados.ok) setTurmas(dados.turmas);
+      if (dados.ok) {
+        setTurmas(dados.turmas);
+        setDisciplinas(dados.disciplinas);
+      }
 
       const { data: tipos } = await supabase.from('tipos_ocorrencia').select('id, categoria, texto').order('texto');
       setTiposAtividade((tipos || []).filter((t) => t.categoria === 'atividade'));
@@ -60,6 +65,7 @@ export default function PaginaRegistrarOcorrencia() {
     setErro('');
     if (!turmaId) { setErro('Selecione a turma.'); return; }
     if (!alunoId) { setErro('Selecione o aluno.'); return; }
+    if (!disciplina) { setErro('Selecione a disciplina.'); return; }
     if (motivosAtividades.length === 0 && motivosDisciplina.length === 0) { setErro('Selecione pelo menos um motivo.'); return; }
 
     setEnviando(true);
@@ -67,7 +73,7 @@ export default function PaginaRegistrarOcorrencia() {
       const resposta = await fetch('/api/ocorrencias', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
-        body: JSON.stringify({ turmaId, alunoId, motivosAtividades, motivosDisciplina, detalhamento })
+        body: JSON.stringify({ turmaId, alunoId, disciplina, motivosAtividades, motivosDisciplina, detalhamento })
       });
       const dados = await resposta.json();
       if (!dados.ok) { setErro(dados.erro); setEnviando(false); return; }
@@ -125,6 +131,12 @@ export default function PaginaRegistrarOcorrencia() {
       <select value={turmaId} onChange={(e) => mudarTurma(e.target.value)} style={estiloCampo}>
         <option value="">Selecione...</option>
         {turmas.map((t) => <option key={t.id} value={t.id}>{t.nome}</option>)}
+      </select>
+
+      <label style={estiloRotulo}>Disciplina</label>
+      <select value={disciplina} onChange={(e) => setDisciplina(e.target.value)} style={estiloCampo}>
+        <option value="">Selecione...</option>
+        {disciplinas.map((d) => <option key={d} value={d}>{d}</option>)}
       </select>
 
       <label style={estiloRotulo}>Aluno</label>
