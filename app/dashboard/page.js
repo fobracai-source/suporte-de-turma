@@ -110,7 +110,7 @@ export default function PaginaDashboard() {
       )}
 
       {perfil.tipo === 'aluno' && (
-        <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
+        <div style={{ display: 'flex', gap: 10, marginBottom: 12 }}>
           <button
             onClick={() => router.push('/minhas-notas')}
             style={{ flex: 1, padding: 14, borderRadius: 8, border: '1.5px solid #6C5CE7', background: 'white', color: '#6C5CE7', fontWeight: 'bold', fontSize: 13, cursor: 'pointer' }}>
@@ -122,6 +122,14 @@ export default function PaginaDashboard() {
             🚨 Minhas ocorrências
           </button>
         </div>
+      )}
+
+      {perfil.tipo === 'aluno' && (
+        <button
+          onClick={() => router.push('/denunciar-colega')}
+          style={{ width: '100%', padding: 14, marginBottom: 20, borderRadius: 8, border: '1.5px solid #7B68EE', background: 'white', color: '#7B68EE', fontWeight: 'bold', fontSize: 13, cursor: 'pointer' }}>
+          🙊 Meu colega atrapalha!
+        </button>
       )}
 
       {erro && (
