@@ -43,12 +43,12 @@ export default function PaginaDashboard() {
       } else {
         const { data: professor } = await supabase
           .from('professores')
-          .select('nome')
+          .select('nome, is_admin')
           .eq('auth_user_id', session.user.id)
           .maybeSingle();
 
         if (professor) {
-          setPerfil({ tipo: 'professor', nome: professor.nome });
+          setPerfil({ tipo: 'professor', nome: professor.nome, isAdmin: professor.is_admin });
 
           const { data: minhasAtividades, error: erroAtividades } = await supabase
             .from('atividades')
@@ -142,6 +142,14 @@ export default function PaginaDashboard() {
             </>
           )}
         </div>
+      )}
+
+      {perfil.tipo === 'professor' && perfil.isAdmin && (
+        <button
+          onClick={() => router.push('/admin')}
+          style={{ width: '100%', padding: 14, marginBottom: 12, borderRadius: 8, border: 'none', background: '#2D3436', color: 'white', fontWeight: 'bold', fontSize: 13, cursor: 'pointer' }}>
+          ⚙️ Administração (turmas, professores, alunos)
+        </button>
       )}
 
       {perfil.tipo === 'professor' && (
