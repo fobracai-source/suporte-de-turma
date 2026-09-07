@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 // app/api/verificar-cadastro-aluno/route.js
 // Pública de propósito (roda ANTES do login existir) — só confirma se
 // esse aluno já tem uma conta de acesso criada ou não. Não expõe
