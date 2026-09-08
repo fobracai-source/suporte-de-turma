@@ -3,10 +3,13 @@
 // Recebe as respostas do aluno, confere com o gabarito de VERDADE (lido
 // aqui, no servidor — nunca enviado pro navegador), calcula a nota, e
 // grava a entrega. Permite no máximo 3 tentativas por atividade — a
-// nota final mostrada é a MÉDIA de todas as tentativas feitas.
+// nota final mostrada é a MÉDIA de todas as tentativas feitas. Depois
+// de gravar, manda um e-mail de confirmação pro aluno (se ele já
+// tiver um e-mail cadastrado).
 
 import { createClient } from '@supabase/supabase-js';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { enviarEmail, escolherEmailValido } from '@/lib/email';
 import { NextResponse } from 'next/server';
 
 const LIMITE_TENTATIVAS = 3;
@@ -18,7 +21,6 @@ export async function POST(req) {
     return NextResponse.json({ ok: false, erro: 'Sessão não encontrada. Faça login novamente.' }, { status: 401 });
   }
 
-  // Confere QUEM está mandando essa requisição, usando o token dele
   const supabaseComoUsuario = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
@@ -31,7 +33,7 @@ export async function POST(req) {
 
   const { data: aluno } = await supabaseAdmin
     .from('alunos')
-    .select('id')
+    .select('id, nome, email_aluno, email_aluno_2')
     .eq('auth_user_id', user.id)
     .maybeSingle();
 
@@ -44,8 +46,6 @@ export async function POST(req) {
     return NextResponse.json({ ok: false, erro: 'Atividade não informada.' }, { status: 400 });
   }
 
-  // Confere quantas vezes o aluno JÁ respondeu essa atividade — se já
-  // chegou no limite, bloqueia aqui, sem nem chegar a gravar nada novo.
   const { data: tentativasAnteriores, error: erroContagem } = await supabaseAdmin
     .from('entregas')
     .select('id, nota_calculada, criado_em')
@@ -61,10 +61,9 @@ export async function POST(req) {
     return NextResponse.json({ ok: false, erro: 'Você já respondeu!', jaAtingiuMaximo: true }, { status: 403 });
   }
 
-  // Só agora, no servidor, lemos o gabarito de verdade
   const { data: atividade } = await supabaseAdmin
     .from('atividades')
-    .select('gabarito, valor_nota')
+    .select('gabarito, valor_nota, disciplina, aula_numero, tema')
     .eq('id', atividadeId)
     .maybeSingle();
 
@@ -84,7 +83,7 @@ export async function POST(req) {
     notaDestaTentativa = Math.round((acertos / gabarito.length) * atividade.valor_nota * 100) / 100;
   }
 
-  const { data: entregaCriada, error: erroGravar } = await supabaseAdmin
+  const { error: erroGravar } = await supabaseAdmin
     .from('entregas')
     .insert({
       atividade_id: atividadeId,
@@ -93,22 +92,60 @@ export async function POST(req) {
       avaliacao: avaliacao || null,
       observacoes: observacoes || null,
       nota_calculada: notaDestaTentativa
-    })
-    .select()
-    .single();
+    });
 
   if (erroGravar) {
     return NextResponse.json({ ok: false, erro: erroGravar.message }, { status: 500 });
   }
 
-  // Monta a lista de notas de TODAS as tentativas (as antigas + essa
-  // nova agora) e calcula a média — é essa média que vale como nota
-  // final da atividade.
   const todasAsNotas = [...(tentativasAnteriores || []).map((t) => t.nota_calculada), notaDestaTentativa];
   let notaMedia = null;
   if (gabarito.length > 0) {
     const somaNotas = todasAsNotas.reduce((soma, n) => soma + (n || 0), 0);
     notaMedia = Math.round((somaNotas / todasAsNotas.length) * 100) / 100;
+  }
+  const aindaPodeTentar = todasAsNotas.length < LIMITE_TENTATIVAS;
+
+  // Manda o e-mail de confirmação — só se o aluno já tiver um e-mail
+  // cadastrado de verdade. Segue a mesma regra do resto do sistema:
+  // nunca revela o gabarito, só a nota final.
+  let emailEnviado = false;
+  const emailDestino = escolherEmailValido(aluno.email_aluno, aluno.email_aluno_2);
+  if (emailDestino) {
+    const tituloAtividade = `${atividade.disciplina} — Aula ${atividade.aula_numero} — ${atividade.tema}`;
+    let corpoHtml;
+    let corpoTexto;
+
+    if (gabarito.length > 0) {
+      const listaTentativas = todasAsNotas.map((n, i) => `Tentativa ${i + 1}: ${n} / ${atividade.valor_nota}`).join('<br>');
+      corpoHtml = `
+        <div style="font-family: Arial, sans-serif; max-width: 480px;">
+          <h2 style="color:#6C5CE7;">${tituloAtividade}</h2>
+          <p>Olá, <b>${aluno.nome}</b>! Recebemos sua resposta.</p>
+          <div style="background:#F4F2FF; padding:14px; border-radius:10px; margin:14px 0;">${listaTentativas}</div>
+          <p style="font-size:22px; font-weight:bold; color:#6C5CE7;">Nota média: ${notaMedia} / ${atividade.valor_nota}</p>
+          ${aindaPodeTentar ? `<p style="color:#888; font-size:13px;">Você ainda pode tentar mais ${LIMITE_TENTATIVAS - todasAsNotas.length} vez(es).</p>` : ''}
+        </div>
+      `;
+      corpoTexto = `${tituloAtividade}\n\nOlá, ${aluno.nome}! Recebemos sua resposta.\n\n${listaTentativas.replace(/<br>/g, '\n')}\n\nNota média: ${notaMedia} / ${atividade.valor_nota}`;
+    } else {
+      corpoHtml = `
+        <div style="font-family: Arial, sans-serif; max-width: 480px;">
+          <h2 style="color:#6C5CE7;">${tituloAtividade}</h2>
+          <p>Olá, <b>${aluno.nome}</b>! Recebemos sua resposta.</p>
+          <p>Essa atividade será avaliada manualmente pelo(a) professor(a).</p>
+        </div>
+      `;
+      corpoTexto = `${tituloAtividade}\n\nOlá, ${aluno.nome}! Recebemos sua resposta. Essa atividade será avaliada manualmente pelo(a) professor(a).`;
+    }
+
+    const resultadoEmail = await enviarEmail({
+      para: emailDestino,
+      assunto: `Resposta recebida — ${tituloAtividade}`,
+      html: corpoHtml,
+      texto: corpoTexto
+    });
+    emailEnviado = resultadoEmail.enviado;
   }
 
   return NextResponse.json({
@@ -119,6 +156,7 @@ export async function POST(req) {
     notaMedia: notaMedia,
     valorNota: atividade.valor_nota,
     numQuestoes: gabarito.length,
-    aindaPodeTentar: todasAsNotas.length < LIMITE_TENTATIVAS
+    aindaPodeTentar: aindaPodeTentar,
+    emailEnviado: emailEnviado
   });
 }
