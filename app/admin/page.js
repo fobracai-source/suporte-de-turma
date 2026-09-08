@@ -15,6 +15,11 @@ export default function PaginaAdmin() {
 
   // Turma
   const [nomeTurma, setNomeTurma] = useState('');
+  const [diasPorTurma, setDiasPorTurma] = useState({}); // { turmaId: { ocorrencia: [...], atividade: [...] } }
+
+  // E-mail (remetentes)
+  const [statusRemetentes, setStatusRemetentes] = useState(null);
+  const [camposRemetentes, setCamposRemetentes] = useState({ remetente1Email: '', remetente1Senha: '', remetente2Email: '', remetente2Senha: '', remetente3Email: '', remetente3Senha: '' });
 
   // Professor
   const [nomeProfessor, setNomeProfessor] = useState('');
@@ -48,8 +53,18 @@ export default function PaginaAdmin() {
 
       if (professor && professor.is_admin) {
         setSouAdmin(true);
-        const { data: t } = await supabase.from('turmas').select('id, nome').order('nome');
+        const { data: t } = await supabase.from('turmas').select('id, nome, dias_envio_ocorrencia, dias_envio_atividade').order('nome');
         setTurmas(t || []);
+
+        const mapaDias = {};
+        (t || []).forEach((turma) => {
+          mapaDias[turma.id] = { ocorrencia: turma.dias_envio_ocorrencia || [], atividade: turma.dias_envio_atividade || [] };
+        });
+        setDiasPorTurma(mapaDias);
+
+        const respostaStatus = await fetch('/api/admin/status-remetentes', { headers: { Authorization: `Bearer ${session.access_token}` } });
+        const dadosStatus = await respostaStatus.json();
+        if (dadosStatus.ok) setStatusRemetentes(dadosStatus);
       }
       setCarregando(false);
     }
@@ -79,11 +94,45 @@ export default function PaginaAdmin() {
     }
   }
 
+  const DIAS_SEMANA = [
+    { valor: 'domingo', rotulo: 'Dom' }, { valor: 'segunda', rotulo: 'Seg' }, { valor: 'terca', rotulo: 'Ter' },
+    { valor: 'quarta', rotulo: 'Qua' }, { valor: 'quinta', rotulo: 'Qui' }, { valor: 'sexta', rotulo: 'Sex' }, { valor: 'sabado', rotulo: 'Sáb' }
+  ];
+
+  function alternarDiaTurma(turmaId, tipo, dia) {
+    setDiasPorTurma((atual) => {
+      const atualDaTurma = atual[turmaId] || { ocorrencia: [], atividade: [] };
+      const listaAtual = atualDaTurma[tipo] || [];
+      const novaLista = listaAtual.includes(dia) ? listaAtual.filter((d) => d !== dia) : [...listaAtual, dia];
+      return { ...atual, [turmaId]: { ...atualDaTurma, [tipo]: novaLista } };
+    });
+  }
+
+  async function salvarDiasTurma(turmaId) {
+    const dias = diasPorTurma[turmaId] || { ocorrencia: [], atividade: [] };
+    const dados = await chamarApi('/api/admin/atualizar-dias-turma', {
+      turmaId, diasOcorrencia: dias.ocorrencia, diasAtividade: dias.atividade
+    });
+    if (dados) setSucesso('Dias de envio atualizados!');
+  }
+
+  async function salvarRemetentes() {
+    const dados = await chamarApi('/api/admin/configurar-remetentes', camposRemetentes);
+    if (dados) {
+      setSucesso('Remetentes salvos!');
+      setCamposRemetentes({ remetente1Email: '', remetente1Senha: '', remetente2Email: '', remetente2Senha: '', remetente3Email: '', remetente3Senha: '' });
+      const respostaStatus = await fetch('/api/admin/status-remetentes', { headers: { Authorization: `Bearer ${accessToken}` } });
+      const dadosStatus = await respostaStatus.json();
+      if (dadosStatus.ok) setStatusRemetentes(dadosStatus);
+    }
+  }
+
   async function criarTurma() {
     const dados = await chamarApi('/api/admin/criar-turma', { nome: nomeTurma });
     if (dados) {
       setSucesso(`Turma "${dados.turma.nome}" criada!`);
       setTurmas((atual) => [...atual, dados.turma].sort((a, b) => a.nome.localeCompare(b.nome)));
+      setDiasPorTurma((atual) => ({ ...atual, [dados.turma.id]: { ocorrencia: [], atividade: [] } }));
       setNomeTurma('');
     }
   }
@@ -171,6 +220,7 @@ export default function PaginaAdmin() {
         <button onClick={() => { setAba('professor'); setErro(''); setSucesso(''); }} style={estiloAba(aba === 'professor')}>Professor</button>
         <button onClick={() => { setAba('aluno'); setErro(''); setSucesso(''); }} style={estiloAba(aba === 'aluno')}>Aluno</button>
         <button onClick={() => { setAba('importar'); setErro(''); setSucesso(''); }} style={estiloAba(aba === 'importar')}>Importar</button>
+        <button onClick={() => { setAba('email'); setErro(''); setSucesso(''); }} style={estiloAba(aba === 'email')}>E-mail</button>
       </div>
 
       {erro && <div style={{ background: '#FFEDEA', color: '#C93B26', padding: 12, borderRadius: 8, marginBottom: 14, fontSize: 13.5 }}>⚠️ {erro}</div>}
@@ -181,6 +231,40 @@ export default function PaginaAdmin() {
           <label style={estiloRotulo}>Nome da turma</label>
           <input type="text" value={nomeTurma} onChange={(e) => setNomeTurma(e.target.value)} style={estiloCampo} placeholder="Ex.: 81, 103A..." />
           <button onClick={criarTurma} disabled={enviando} style={estiloBotao}>{enviando ? 'Criando...' : 'Criar turma'}</button>
+
+          <h3 style={{ fontSize: 15, marginTop: 28, marginBottom: 12 }}>Dias de envio dos e-mails consolidados</h3>
+          {turmas.map((t) => {
+            const dias = diasPorTurma[t.id] || { ocorrencia: [], atividade: [] };
+            return (
+              <div key={t.id} style={{ border: '1.5px solid #eee', borderRadius: 10, padding: 14, marginBottom: 12 }}>
+                <p style={{ margin: '0 0 10px 0', fontWeight: 'bold', fontSize: 14 }}>Turma {t.nome}</p>
+
+                <p style={{ margin: '0 0 6px 0', fontSize: 12, color: '#888' }}>📋 E-mail de ocorrências</p>
+                <div style={{ marginBottom: 12 }}>
+                  {DIAS_SEMANA.map((d) => (
+                    <label key={d.valor} style={{ display: 'inline-block', marginRight: 6, marginBottom: 6, padding: '5px 10px', borderRadius: 14, border: dias.ocorrencia.includes(d.valor) ? '2px solid #FF7A59' : '1.5px solid #ddd', background: dias.ocorrencia.includes(d.valor) ? '#FFF0EA' : 'white', cursor: 'pointer', fontSize: 11.5, fontWeight: 'bold' }}>
+                      <input type="checkbox" checked={dias.ocorrencia.includes(d.valor)} onChange={() => alternarDiaTurma(t.id, 'ocorrencia', d.valor)} style={{ display: 'none' }} />
+                      {d.rotulo}
+                    </label>
+                  ))}
+                </div>
+
+                <p style={{ margin: '0 0 6px 0', fontSize: 12, color: '#888' }}>📊 E-mail de atividades</p>
+                <div style={{ marginBottom: 12 }}>
+                  {DIAS_SEMANA.map((d) => (
+                    <label key={d.valor} style={{ display: 'inline-block', marginRight: 6, marginBottom: 6, padding: '5px 10px', borderRadius: 14, border: dias.atividade.includes(d.valor) ? '2px solid #6C5CE7' : '1.5px solid #ddd', background: dias.atividade.includes(d.valor) ? '#F4F2FF' : 'white', cursor: 'pointer', fontSize: 11.5, fontWeight: 'bold' }}>
+                      <input type="checkbox" checked={dias.atividade.includes(d.valor)} onChange={() => alternarDiaTurma(t.id, 'atividade', d.valor)} style={{ display: 'none' }} />
+                      {d.rotulo}
+                    </label>
+                  ))}
+                </div>
+
+                <button onClick={() => salvarDiasTurma(t.id)} style={{ padding: '6px 14px', borderRadius: 6, border: 'none', background: '#2D3436', color: 'white', fontWeight: 'bold', fontSize: 11.5, cursor: 'pointer' }}>
+                  Salvar dias dessa turma
+                </button>
+              </div>
+            );
+          })}
         </div>
       )}
 
@@ -263,6 +347,43 @@ export default function PaginaAdmin() {
               )}
             </div>
           )}
+        </div>
+      )}
+
+      {aba === 'email' && (
+        <div>
+          <div style={{ background: '#F4F2FF', color: '#4E3FC7', padding: 12, borderRadius: 8, marginBottom: 18, fontSize: 12.5, lineHeight: 1.6 }}>
+            📧 Configure até 3 contas do Gmail como remetente. Se a 1ª falhar na hora de mandar (por exemplo, estourou o limite diário), o sistema tenta a 2ª, depois a 3ª — automaticamente.
+            <br /><br />
+            Cada uma precisa de uma <b>senha de app</b> do Google (não é a senha normal da conta — veja o LEIA-ME de como gerar).
+          </div>
+
+          {[1, 2, 3].map((n) => {
+            const status = statusRemetentes ? statusRemetentes[`remetente${n}`] : null;
+            return (
+              <div key={n} style={{ border: '1.5px solid #eee', borderRadius: 10, padding: 14, marginBottom: 12 }}>
+                <p style={{ margin: '0 0 10px 0', fontWeight: 'bold', fontSize: 13 }}>
+                  Remetente {n} {status?.configurado ? <span style={{ color: '#2ECC71', fontSize: 11 }}>✓ configurado ({status.email})</span> : <span style={{ color: '#C93B26', fontSize: 11 }}>não configurado</span>}
+                </p>
+                <input
+                  type="email" placeholder="E-mail do Gmail"
+                  value={camposRemetentes[`remetente${n}Email`]}
+                  onChange={(e) => setCamposRemetentes((atual) => ({ ...atual, [`remetente${n}Email`]: e.target.value }))}
+                  style={{ ...estiloCampo, marginBottom: 8 }}
+                />
+                <input
+                  type="password" placeholder="Senha de app (16 caracteres)"
+                  value={camposRemetentes[`remetente${n}Senha`]}
+                  onChange={(e) => setCamposRemetentes((atual) => ({ ...atual, [`remetente${n}Senha`]: e.target.value }))}
+                  style={estiloCampo}
+                />
+              </div>
+            );
+          })}
+
+          <p style={{ fontSize: 11.5, color: '#999', marginBottom: 14 }}>Deixe em branco o que não quiser alterar — só é atualizado o que você preencher.</p>
+
+          <button onClick={salvarRemetentes} disabled={enviando} style={estiloBotao}>{enviando ? 'Salvando...' : 'Salvar remetentes'}</button>
         </div>
       )}
     </main>
