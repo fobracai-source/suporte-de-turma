@@ -31,7 +31,7 @@ async function buscarUsuarioPorEmail(email) {
 }
 
 export async function POST(req) {
-  const { turmaId, nome, dataNascimento, matricula, telefone, emailAluno, emailFamilia, donoEmailFamilia, observacao } = await req.json();
+  const { turmaId, nome, dataNascimento, matricula, telefone, emailAluno, emailAluno2, emailFamilia, donoEmailFamilia, observacao } = await req.json();
 
   if (!turmaId || !nome) {
     return NextResponse.json({ ok: false, erro: 'Dados incompletos.' }, { status: 400 });
@@ -98,6 +98,7 @@ export async function POST(req) {
       matricula: matricula && matricula.trim() ? matricula.trim() : MENSAGEM_PENDENTE,
       telefone: telefone && telefone.trim() ? telefone.trim() : MENSAGEM_PENDENTE,
       email_aluno: emailAluno && emailAluno.trim() ? emailAluno.trim() : MENSAGEM_PENDENTE,
+      email_aluno_2: emailAluno2 && emailAluno2.trim() ? emailAluno2.trim() : MENSAGEM_PENDENTE,
       email_familia: emailFamilia && emailFamilia.trim() ? emailFamilia.trim() : MENSAGEM_PENDENTE,
       dono_email_familia: donoEmailFamilia && donoEmailFamilia.trim() ? donoEmailFamilia.trim() : MENSAGEM_PENDENTE,
       observacao: observacao && observacao.trim() ? observacao.trim() : '',
