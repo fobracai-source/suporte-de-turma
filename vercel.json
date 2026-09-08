@@ -1,6 +1,10 @@
 {
   "crons": [
     {
+      "path": "/api/cron/gerar-ocorrencias-atraso",
+      "schedule": "0 9 * * *"
+    },
+    {
       "path": "/api/cron/enviar-digests",
       "schedule": "0 21 * * *"
     }
