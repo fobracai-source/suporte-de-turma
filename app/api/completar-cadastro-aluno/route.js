@@ -33,7 +33,7 @@ export async function POST(req) {
     return NextResponse.json({ ok: false, erro: 'Essa conta não é de um aluno.' }, { status: 403 });
   }
 
-  const { matricula, telefone, emailAluno, emailFamilia, donoEmailFamilia, observacao } = await req.json();
+  const { matricula, telefone, emailAluno, emailAluno2, emailFamilia, donoEmailFamilia, observacao } = await req.json();
 
   const atualizacao = { cadastro_atualizado_em: new Date().toISOString() };
   if (matricula !== undefined) atualizacao.matricula = matricula.trim() ? matricula.trim() : MENSAGEM_PENDENTE;
