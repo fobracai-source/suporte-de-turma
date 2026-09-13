@@ -23,6 +23,8 @@ export default function PaginaAdmin() {
 
   // Professor
   const [nomeProfessor, setNomeProfessor] = useState('');
+  const [professoresExistentes, setProfessoresExistentes] = useState([]);
+  const [edicaoProfessor, setEdicaoProfessor] = useState({}); // { professorId: { disciplinasTexto, turmaIds } }
   const [emailProfessor, setEmailProfessor] = useState('');
   const [dataNascProfessor, setDataNascProfessor] = useState('');
   const [disciplinasTexto, setDisciplinasTexto] = useState('');
@@ -53,6 +55,20 @@ export default function PaginaAdmin() {
 
       if (professor && professor.is_admin) {
         setSouAdmin(true);
+        const { data: profs } = await supabase
+          .from('professores')
+          .select('id, nome, professor_disciplinas(disciplina), professor_turmas(turma_id)')
+          .order('nome');
+        setProfessoresExistentes(profs || []);
+
+        const mapaEdicao = {};
+        (profs || []).forEach((p) => {
+          mapaEdicao[p.id] = {
+            disciplinasTexto: (p.professor_disciplinas || []).map((d) => d.disciplina).join(', '),
+            turmaIds: (p.professor_turmas || []).map((t) => t.turma_id)
+          };
+        });
+        setEdicaoProfessor(mapaEdicao);
         const { data: t } = await supabase.from('turmas').select('id, nome, dias_envio_ocorrencia, dias_envio_atividade').order('nome');
         setTurmas(t || []);
 
@@ -137,6 +153,26 @@ export default function PaginaAdmin() {
     }
   }
 
+  function alternarTurmaEdicao(professorId, turmaId) {
+    setEdicaoProfessor((atual) => {
+      const atualDoProfessor = atual[professorId] || { disciplinasTexto: '', turmaIds: [] };
+      const listaAtual = atualDoProfessor.turmaIds || [];
+      const novaLista = listaAtual.includes(turmaId) ? listaAtual.filter((t) => t !== turmaId) : [...listaAtual, turmaId];
+      return { ...atual, [professorId]: { ...atualDoProfessor, turmaIds: novaLista } };
+    });
+  }
+
+  function mudarDisciplinasEdicao(professorId, texto) {
+    setEdicaoProfessor((atual) => ({ ...atual, [professorId]: { ...(atual[professorId] || {}), disciplinasTexto: texto } }));
+  }
+
+  async function salvarEdicaoProfessor(professorId) {
+    const dadosEdicao = edicaoProfessor[professorId] || { disciplinasTexto: '', turmaIds: [] };
+    const disciplinas = dadosEdicao.disciplinasTexto.split(',').map((d) => d.trim()).filter(Boolean);
+    const dados = await chamarApi('/api/admin/atualizar-professor', { professorId, disciplinas, turmaIds: dadosEdicao.turmaIds });
+    if (dados) setSucesso('Professor atualizado!');
+  }
+
   async function criarProfessor() {
     const disciplinas = disciplinasTexto.split(',').map((d) => d.trim()).filter(Boolean);
     const dados = await chamarApi('/api/admin/criar-professor', {
@@ -145,6 +181,8 @@ export default function PaginaAdmin() {
     });
     if (dados) {
       setSucesso(`Professor(a) "${dados.professor.nome}" cadastrado(a)!`);
+      setProfessoresExistentes((atual) => [...atual, dados.professor].sort((a, b) => a.nome.localeCompare(b.nome)));
+      setEdicaoProfessor((atual) => ({ ...atual, [dados.professor.id]: { disciplinasTexto: disciplinas.join(', '), turmaIds: turmasDoProfessor } }));
       setNomeProfessor(''); setEmailProfessor(''); setDataNascProfessor(''); setDisciplinasTexto(''); setTurmasDoProfessor([]);
     }
   }
@@ -293,6 +331,37 @@ export default function PaginaAdmin() {
           </div>
 
           <button onClick={criarProfessor} disabled={enviando} style={estiloBotao}>{enviando ? 'Cadastrando...' : 'Cadastrar professor(a)'}</button>
+
+          <h3 style={{ fontSize: 15, marginTop: 28, marginBottom: 12 }}>Professores já cadastrados</h3>
+          {professoresExistentes.map((p) => {
+            const edicao = edicaoProfessor[p.id] || { disciplinasTexto: '', turmaIds: [] };
+            return (
+              <div key={p.id} style={{ border: '1.5px solid #eee', borderRadius: 10, padding: 14, marginBottom: 12 }}>
+                <p style={{ margin: '0 0 10px 0', fontWeight: 'bold', fontSize: 14 }}>{p.nome}</p>
+
+                <label style={{ ...estiloRotulo, fontSize: 12 }}>Disciplinas <span style={{ fontWeight: 400, color: '#999' }}>(separadas por vírgula)</span></label>
+                <input
+                  type="text" value={edicao.disciplinasTexto}
+                  onChange={(e) => mudarDisciplinasEdicao(p.id, e.target.value)}
+                  style={{ ...estiloCampo, marginBottom: 10 }} placeholder="Ex.: Matemática, Física"
+                />
+
+                <label style={{ ...estiloRotulo, fontSize: 12 }}>Turmas</label>
+                <div style={{ marginBottom: 10 }}>
+                  {turmas.map((t) => (
+                    <label key={t.id} style={{ display: 'inline-block', marginRight: 6, marginBottom: 6, padding: '5px 10px', borderRadius: 14, border: edicao.turmaIds.includes(t.id) ? '2px solid #6C5CE7' : '1.5px solid #ddd', background: edicao.turmaIds.includes(t.id) ? '#F4F2FF' : 'white', cursor: 'pointer', fontSize: 11.5, fontWeight: 'bold' }}>
+                      <input type="checkbox" checked={edicao.turmaIds.includes(t.id)} onChange={() => alternarTurmaEdicao(p.id, t.id)} style={{ display: 'none' }} />
+                      {t.nome}
+                    </label>
+                  ))}
+                </div>
+
+                <button onClick={() => salvarEdicaoProfessor(p.id)} style={{ padding: '6px 14px', borderRadius: 6, border: 'none', background: '#2D3436', color: 'white', fontWeight: 'bold', fontSize: 11.5, cursor: 'pointer' }}>
+                  Salvar
+                </button>
+              </div>
+            );
+          })}
         </div>
       )}
 
