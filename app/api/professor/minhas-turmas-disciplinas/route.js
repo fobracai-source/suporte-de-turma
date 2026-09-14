@@ -1,8 +1,9 @@
-export const dynamic = 'force-dynamic';
 // app/api/professor/minhas-turmas-disciplinas/route.js
 // Devolve as disciplinas e turmas vinculadas ao professor que está
 // fazendo a requisição — identificado pelo token de sessão dele, nunca
 // por um ID que o navegador poderia inventar.
+export const dynamic = 'force-dynamic';
+
 import { createClient } from '@supabase/supabase-js';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
