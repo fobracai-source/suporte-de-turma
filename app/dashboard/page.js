@@ -168,6 +168,14 @@ export default function PaginaDashboard() {
       )}
 
       {perfil.tipo === 'professor' && (
+        <button
+          onClick={() => router.push('/professor/importar-atividades')}
+          style={{ width: '100%', padding: 12, marginBottom: 10, borderRadius: 8, border: '1.5px dashed #6C5CE7', background: 'white', color: '#6C5CE7', fontWeight: 'bold', fontSize: 12.5, cursor: 'pointer' }}>
+          📥 Importar várias atividades por planilha
+        </button>
+      )}
+
+      {perfil.tipo === 'professor' && (
         <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
           <button
             onClick={() => router.push('/professor/registrar-ocorrencia')}
