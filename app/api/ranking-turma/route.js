@@ -5,7 +5,7 @@
 // bloqueia isso, e é assim mesmo que tem que ser) — aqui a gente só
 // devolve o NOME e a PONTUAÇÃO de cada um, nada além disso.
 import { createClient } from '@supabase/supabase-js';
-import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { supabaseAdmin, jsonSemCache } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
@@ -74,5 +74,5 @@ export async function GET(req) {
 
   const ranking = comNota.map((a, indice) => ({ ...a, posicao: indice + 1 }));
 
-  return NextResponse.json({ ok: true, ranking, semAtividade: semNota });
+  return jsonSemCache({ ok: true, ranking, semAtividade: semNota });
 }
