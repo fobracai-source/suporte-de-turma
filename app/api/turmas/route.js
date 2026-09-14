@@ -7,7 +7,7 @@
 // lista de turmas antiga, mesmo depois de turmas novas serem criadas.
 export const dynamic = 'force-dynamic';
 
-import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { supabaseAdmin, jsonSemCache } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
 
 export async function GET() {
@@ -19,5 +19,5 @@ export async function GET() {
   if (error) {
     return NextResponse.json({ ok: false, erro: error.message }, { status: 500 });
   }
-  return NextResponse.json({ ok: true, turmas: data });
+  return jsonSemCache({ ok: true, turmas: data });
 }
