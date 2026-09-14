@@ -1,7 +1,8 @@
-export const dynamic = 'force-dynamic';
 // app/api/entregas/quantidade-questoes/route.js
 // Devolve só o NÚMERO de questões de uma atividade — nunca o
 // conteúdo do gabarito.
+export const dynamic = 'force-dynamic';
+
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
 
