@@ -9,6 +9,7 @@ export default function PaginaVerEntregas() {
   const [minhasAtividades, setMinhasAtividades] = useState([]);
   const [atividadeSelecionada, setAtividadeSelecionada] = useState('');
   const [entregas, setEntregas] = useState([]);
+  const [faltamEntregar, setFaltamEntregar] = useState([]);
   const [carregandoEntregas, setCarregandoEntregas] = useState(false);
   const [erro, setErro] = useState('');
 
@@ -46,17 +47,37 @@ export default function PaginaVerEntregas() {
 
   async function carregarEntregas(atividadeId) {
     setAtividadeSelecionada(atividadeId);
-    if (!atividadeId) { setEntregas([]); return; }
+    if (!atividadeId) { setEntregas([]); setFaltamEntregar([]); return; }
 
     setCarregandoEntregas(true);
-    const { data, error } = await supabase
+
+    const { data: entregasFeitas, error } = await supabase
       .from('entregas')
-      .select('id, nota_calculada, avaliacao, observacoes, arquivos, criado_em, alunos(nome)')
+      .select('id, aluno_id, nota_calculada, avaliacao, observacoes, arquivos, criado_em, alunos(nome)')
       .eq('atividade_id', atividadeId)
       .order('criado_em', { ascending: false });
 
-    if (error) setErro(error.message);
-    else setEntregas(data || []);
+    if (error) {
+      setErro(error.message);
+      setCarregandoEntregas(false);
+      return;
+    }
+    setEntregas(entregasFeitas || []);
+
+    // Descobre quais turmas essa atividade vale, pra saber o "universo"
+    // completo de alunos que deveriam responder — e comparar com quem
+    // já entregou, pra achar quem falta.
+    const { data: vinculos } = await supabase.from('atividade_turmas').select('turma_id').eq('atividade_id', atividadeId);
+    const turmaIds = (vinculos || []).map((v) => v.turma_id);
+
+    if (turmaIds.length > 0) {
+      const { data: todosAlunos } = await supabase.from('alunos').select('id, nome').in('turma_id', turmaIds).order('nome');
+      const idsQueJaEntregaram = new Set((entregasFeitas || []).map((e) => e.aluno_id));
+      setFaltamEntregar((todosAlunos || []).filter((a) => !idsQueJaEntregaram.has(a.id)));
+    } else {
+      setFaltamEntregar([]);
+    }
+
     setCarregandoEntregas(false);
   }
 
@@ -90,6 +111,19 @@ export default function PaginaVerEntregas() {
 
       {carregandoEntregas && <p style={{ color: '#888', fontSize: 13 }}>Carregando entregas...</p>}
 
+      {!carregandoEntregas && atividadeSelecionada && (
+        <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
+          <div style={{ flex: 1, background: '#F4F2FF', borderRadius: 10, padding: 12, textAlign: 'center' }}>
+            <p style={{ margin: 0, fontSize: 22, fontWeight: 'bold', color: '#6C5CE7' }}>{entregas.length}</p>
+            <p style={{ margin: 0, fontSize: 11, color: '#888' }}>já entregaram</p>
+          </div>
+          <div style={{ flex: 1, background: '#FFF0EA', borderRadius: 10, padding: 12, textAlign: 'center' }}>
+            <p style={{ margin: 0, fontSize: 22, fontWeight: 'bold', color: '#FF7A59' }}>{faltamEntregar.length}</p>
+            <p style={{ margin: 0, fontSize: 11, color: '#888' }}>faltam entregar</p>
+          </div>
+        </div>
+      )}
+
       {!carregandoEntregas && atividadeSelecionada && entregas.length === 0 && (
         <p style={{ color: '#888', fontSize: 14 }}>Ninguém entregou essa atividade ainda.</p>
       )}
@@ -115,6 +149,17 @@ export default function PaginaVerEntregas() {
           )}
         </div>
       ))}
+
+      {!carregandoEntregas && faltamEntregar.length > 0 && (
+        <div style={{ marginTop: 20 }}>
+          <p style={{ fontSize: 13, fontWeight: 'bold', color: '#FF7A59', marginBottom: 10 }}>⏳ Ainda faltam entregar:</p>
+          {faltamEntregar.map((a) => (
+            <div key={a.id} style={{ padding: '10px 14px', borderRadius: 10, border: '1.5px dashed #FFD5C4', marginBottom: 8, background: '#FFFAF8' }}>
+              <p style={{ margin: 0, fontSize: 13.5, color: '#555' }}>{a.nome}</p>
+            </div>
+          ))}
+        </div>
+      )}
     </main>
   );
 }
