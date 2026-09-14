@@ -12,6 +12,10 @@ export default function PaginaLogin() {
   const [nomes, setNomes] = useState([]);
   const [nome, setNome] = useState('');
   const [senha, setSenha] = useState('');
+  const [mostrarEsqueciSenha, setMostrarEsqueciSenha] = useState(false);
+  const [emailRecuperacao, setEmailRecuperacao] = useState('');
+  const [mensagemRecuperacao, setMensagemRecuperacao] = useState('');
+  const [enviandoRecuperacao, setEnviandoRecuperacao] = useState(false);
   const [erro, setErro] = useState('');
   const [carregando, setCarregando] = useState(false);
 
@@ -101,6 +105,25 @@ export default function PaginaLogin() {
     }
   }
 
+  async function enviarRecuperacaoSenha() {
+    setMensagemRecuperacao('');
+    if (!emailRecuperacao.trim()) { setMensagemRecuperacao('Digite o e-mail cadastrado.'); return; }
+
+    setEnviandoRecuperacao(true);
+    try {
+      const resposta = await fetch('/api/aluno/esqueci-senha', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ turmaId, nome, email: emailRecuperacao })
+      });
+      const dados = await resposta.json();
+      setMensagemRecuperacao(dados.mensagem || 'Não foi possível processar seu pedido.');
+    } catch (e) {
+      setMensagemRecuperacao('Erro inesperado: ' + e.message);
+    }
+    setEnviandoRecuperacao(false);
+  }
+
   async function criarPrimeiroAcesso() {
     setErro('');
     if (!dataNascimento) { setErro('A data de nascimento é obrigatória.'); return; }
@@ -187,6 +210,9 @@ export default function PaginaLogin() {
       {/* ACESSO NORMAL — já tem conta, só pede a senha */}
       {!verificandoCadastro && (tipo === 'professor' || ehPrimeiroAcesso === false) && nome && (
         <>
+          <div style={{ background: '#E8F9EE', color: '#1E8449', padding: 12, borderRadius: 8, marginBottom: 16, fontSize: 12.5, lineHeight: 1.5 }}>
+            ✅ Você já possui login, coloque sua senha.
+          </div>
           <label style={estiloRotulo}>Senha</label>
           <input
             type="password"
@@ -202,6 +228,37 @@ export default function PaginaLogin() {
           <button onClick={entrarComSenha} disabled={carregando} style={estiloBotao}>
             {carregando ? 'Entrando...' : 'Entrar'}
           </button>
+
+          {tipo === 'aluno' && (
+            <div style={{ marginTop: 14, textAlign: 'center' }}>
+              {!mostrarEsqueciSenha ? (
+                <button
+                  onClick={() => { setMostrarEsqueciSenha(true); setMensagemRecuperacao(''); setEmailRecuperacao(''); }}
+                  style={{ background: 'none', border: 'none', color: '#6C5CE7', fontSize: 13, cursor: 'pointer', textDecoration: 'underline' }}>
+                  Esqueci minha senha
+                </button>
+              ) : (
+                <div style={{ marginTop: 10, textAlign: 'left', background: '#F9F9FB', padding: 14, borderRadius: 10 }}>
+                  <p style={{ margin: '0 0 8px 0', fontSize: 12.5, color: '#555' }}>
+                    Digite o e-mail que está no seu cadastro — se bater, a senha é enviada pra ele.
+                  </p>
+                  <input
+                    type="email"
+                    placeholder="seu-email@exemplo.com"
+                    value={emailRecuperacao}
+                    onChange={(e) => setEmailRecuperacao(e.target.value)}
+                    style={{ ...estiloCampo, marginBottom: 8 }}
+                  />
+                  {mensagemRecuperacao && (
+                    <p style={{ fontSize: 12, color: '#4E3FC7', marginBottom: 8 }}>{mensagemRecuperacao}</p>
+                  )}
+                  <button onClick={enviarRecuperacaoSenha} disabled={enviandoRecuperacao} style={{ ...estiloBotao, padding: 10, fontSize: 13 }}>
+                    {enviandoRecuperacao ? 'Enviando...' : 'Enviar senha por e-mail'}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </>
       )}
 
@@ -209,7 +266,7 @@ export default function PaginaLogin() {
       {!verificandoCadastro && ehPrimeiroAcesso === true && (
         <div>
           <div style={{ background: '#F4F2FF', color: '#4E3FC7', padding: 12, borderRadius: 8, marginBottom: 16, fontSize: 12.5, lineHeight: 1.5 }}>
-            👋 Esse é o seu primeiro acesso! Preencha os dados abaixo pra criar sua conta.
+            📝 Você precisa se cadastrar. Preencha os dados abaixo pra criar sua conta.
           </div>
 
           <label style={estiloRotulo}>Data de nascimento <span style={{ color: '#C93B26' }}>*obrigatório</span></label>
