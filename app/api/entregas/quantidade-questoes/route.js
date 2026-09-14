@@ -3,7 +3,7 @@
 // conteúdo do gabarito.
 export const dynamic = 'force-dynamic';
 
-import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { supabaseAdmin, jsonSemCache } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
 
 export async function GET(req) {
@@ -23,5 +23,5 @@ export async function GET(req) {
     return NextResponse.json({ ok: false, erro: 'Atividade não encontrada.' }, { status: 404 });
   }
 
-  return NextResponse.json({ ok: true, numQuestoes: (data.gabarito || []).length });
+  return jsonSemCache({ ok: true, numQuestoes: (data.gabarito || []).length });
 }
