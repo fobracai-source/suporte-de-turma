@@ -1,9 +1,10 @@
-export const dynamic = 'force-dynamic';
 // app/api/entregas/tentativas/route.js
 // Confere quantas vezes o aluno logado já respondeu uma atividade —
 // usado ANTES de mostrar o formulário, pra já bloquear de cara se ele
 // tiver estourado o limite de 3 tentativas, sem fazer ele preencher
 // tudo à toa.
+export const dynamic = 'force-dynamic';
+
 import { createClient } from '@supabase/supabase-js';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
