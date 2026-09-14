@@ -41,7 +41,7 @@ export async function POST(req) {
     return NextResponse.json({ ok: false, erro: 'Essa conta não é de um aluno.' }, { status: 403 });
   }
 
-  const { atividadeId, respostas, avaliacao, observacoes } = await req.json();
+  const { atividadeId, respostas, avaliacao, observacoes, arquivos } = await req.json();
   if (!atividadeId) {
     return NextResponse.json({ ok: false, erro: 'Atividade não informada.' }, { status: 400 });
   }
@@ -90,6 +90,7 @@ export async function POST(req) {
       aluno_id: aluno.id,
       respostas: respostas || [],
       avaliacao: avaliacao || null,
+      arquivos: arquivos || [],
       observacoes: observacoes || null,
       nota_calculada: notaDestaTentativa
     });
