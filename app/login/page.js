@@ -55,14 +55,23 @@ export default function PaginaLogin() {
 
   // Assim que o aluno escolhe o nome, confere se ele já tem conta ou não
   useEffect(() => {
+    let cancelado = false; // evita que uma resposta antiga "vença" por engano
+
     async function conferir() {
       setEhPrimeiroAcesso(null);
       setErro('');
       if (tipo !== 'aluno' || !turmaId || !nome) return;
 
       setVerificandoCadastro(true);
-      const resposta = await fetch(`/api/verificar-cadastro-aluno?turmaId=${turmaId}&nome=${encodeURIComponent(nome)}`);
+      const resposta = await fetch('/api/verificar-cadastro-aluno', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ turmaId, nome })
+      });
       const dados = await resposta.json();
+
+      if (cancelado) return; // enquanto esperava, o aluno já mudou de escolha — ignora
+
       setVerificandoCadastro(false);
 
       if (!dados.ok) { setErro(dados.erro); return; }
@@ -78,6 +87,8 @@ export default function PaginaLogin() {
       }
     }
     conferir();
+
+    return () => { cancelado = true; };
   }, [nome, turmaId, tipo]);
 
   async function entrarComSenha() {
