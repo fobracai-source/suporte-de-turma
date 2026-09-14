@@ -6,7 +6,7 @@
 export const dynamic = 'force-dynamic';
 
 import { createClient } from '@supabase/supabase-js';
-import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { supabaseAdmin, jsonSemCache } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
 
 export const LIMITE_TENTATIVAS = 3;
@@ -54,7 +54,7 @@ export async function GET(req) {
 
   const qtd = (tentativas || []).length;
 
-  return NextResponse.json({
+  return jsonSemCache({
     ok: true,
     qtdTentativas: qtd,
     jaAtingiuMaximo: qtd >= LIMITE_TENTATIVAS,
