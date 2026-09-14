@@ -32,6 +32,18 @@ export default function PaginaVerEntregas() {
     carregar();
   }, [router]);
 
+  async function abrirAnexo(entregaId, caminhoArquivo) {
+    const { data: { session } } = await supabase.auth.getSession();
+    const resposta = await fetch('/api/anexos/url-assinada', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+      body: JSON.stringify({ entregaId, caminhoArquivo })
+    });
+    const dados = await resposta.json();
+    if (dados.ok) window.open(dados.url, '_blank');
+    else alert('Não consegui abrir o anexo: ' + dados.erro);
+  }
+
   async function carregarEntregas(atividadeId) {
     setAtividadeSelecionada(atividadeId);
     if (!atividadeId) { setEntregas([]); return; }
@@ -39,7 +51,7 @@ export default function PaginaVerEntregas() {
     setCarregandoEntregas(true);
     const { data, error } = await supabase
       .from('entregas')
-      .select('id, nota_calculada, avaliacao, observacoes, criado_em, alunos(nome)')
+      .select('id, nota_calculada, avaliacao, observacoes, arquivos, criado_em, alunos(nome)')
       .eq('atividade_id', atividadeId)
       .order('criado_em', { ascending: false });
 
@@ -92,6 +104,15 @@ export default function PaginaVerEntregas() {
           </div>
           <p style={{ margin: '4px 0 0 0', fontSize: 11, color: '#aaa' }}>{new Date(e.criado_em).toLocaleString('pt-BR')}</p>
           {e.observacoes && <p style={{ margin: '6px 0 0 0', fontSize: 12.5, color: '#555' }}>"{e.observacoes}"</p>}
+          {(e.arquivos || []).length > 0 && (
+            <div style={{ marginTop: 8 }}>
+              {e.arquivos.map((caminho, i) => (
+                <button key={i} onClick={() => abrirAnexo(e.id, caminho)} style={{ display: 'inline-block', marginRight: 6, marginBottom: 6, padding: '5px 10px', borderRadius: 12, border: '1.5px solid #6C5CE7', background: 'white', color: '#6C5CE7', fontSize: 11, fontWeight: 'bold', cursor: 'pointer' }}>
+                  📎 Anexo {i + 1}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       ))}
     </main>
