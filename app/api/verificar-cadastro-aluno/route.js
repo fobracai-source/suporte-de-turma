@@ -4,7 +4,7 @@
 // nenhum dado sensível, só um "sim" ou "não".
 export const dynamic = 'force-dynamic';
 
-import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { supabaseAdmin, jsonSemCache } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
 
 export async function GET(req) {
@@ -27,7 +27,7 @@ export async function GET(req) {
     return NextResponse.json({ ok: false, erro: 'Aluno não encontrado.' }, { status: 404 });
   }
 
-  return NextResponse.json({
+  return jsonSemCache({
     ok: true,
     temLogin: !!aluno.auth_user_id,
     // Se já existem valores cadastrados (por exemplo, colocados pelo
