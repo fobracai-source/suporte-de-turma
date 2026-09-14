@@ -5,7 +5,7 @@
 export const dynamic = 'force-dynamic';
 
 import { createClient } from '@supabase/supabase-js';
-import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { supabaseAdmin, jsonSemCache } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
 
 export async function GET(req) {
@@ -47,7 +47,7 @@ export async function GET(req) {
 
   const turmas = (turmasVinculo || []).map((v) => v.turmas).filter(Boolean);
 
-  return NextResponse.json({
+  return jsonSemCache({
     ok: true,
     professorId: professor.id,
     disciplinas: (disciplinas || []).map((d) => d.disciplina),
