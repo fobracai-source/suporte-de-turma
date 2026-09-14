@@ -7,7 +7,7 @@
 export const dynamic = 'force-dynamic';
 
 import { createClient } from '@supabase/supabase-js';
-import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { supabaseAdmin, jsonSemCache } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
 
 export async function GET(req) {
@@ -47,5 +47,5 @@ export async function GET(req) {
     return NextResponse.json({ ok: false, erro: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ ok: true, colegas: colegas || [], meuId: aluno.id });
+  return jsonSemCache({ ok: true, colegas: colegas || [], meuId: aluno.id });
 }
