@@ -1,10 +1,11 @@
-export const dynamic = 'force-dynamic';
 // app/api/colegas-da-turma/route.js
 // Lista os colegas da MESMA turma de quem está pedindo — só nome e id,
 // NUNCA data de nascimento, telefone ou e-mail (a data de nascimento é
 // literalmente a senha de login de cada um, então não pode vazar aqui
 // de jeito nenhum). Por isso essa rota existe: pra nunca precisarmos
 // dar permissão de RLS pro aluno ler a linha completa de outro aluno.
+export const dynamic = 'force-dynamic';
+
 import { createClient } from '@supabase/supabase-js';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
