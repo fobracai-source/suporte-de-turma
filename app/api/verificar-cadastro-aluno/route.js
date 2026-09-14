@@ -2,15 +2,17 @@
 // Pública de propósito (roda ANTES do login existir) — só confirma se
 // esse aluno já tem uma conta de acesso criada ou não. Não expõe
 // nenhum dado sensível, só um "sim" ou "não".
-export const dynamic = 'force-dynamic';
-
-import { supabaseAdmin, jsonSemCache } from '@/lib/supabaseAdmin';
+//
+// IMPORTANTE: essa rota é um POST de propósito, não um GET — pedidos
+// do tipo POST NUNCA são guardados em cache pelo navegador (é assim
+// que o próprio protocolo HTTP funciona, não depende de nenhuma
+// configuração nossa). Isso elimina de vez o risco de mostrar uma
+// resposta antiga.
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
 
-export async function GET(req) {
-  const { searchParams } = new URL(req.url);
-  const turmaId = searchParams.get('turmaId');
-  const nome = searchParams.get('nome');
+export async function POST(req) {
+  const { turmaId, nome } = await req.json();
 
   if (!turmaId || !nome) {
     return NextResponse.json({ ok: false, erro: 'Dados incompletos.' }, { status: 400 });
@@ -27,7 +29,7 @@ export async function GET(req) {
     return NextResponse.json({ ok: false, erro: 'Aluno não encontrado.' }, { status: 404 });
   }
 
-  return jsonSemCache({
+  return NextResponse.json({
     ok: true,
     temLogin: !!aluno.auth_user_id,
     // Se já existem valores cadastrados (por exemplo, colocados pelo
