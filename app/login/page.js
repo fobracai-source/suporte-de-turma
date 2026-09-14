@@ -117,7 +117,20 @@ export default function PaginaLogin() {
       });
       const resultado = await resposta.json();
 
-      if (!resultado.ok) { setErro(resultado.erro || 'Não foi possível criar sua conta.'); setCarregando(false); return; }
+      if (!resultado.ok) {
+        // Se o servidor descobrir (na hora de gravar) que essa conta já
+        // existe — mesmo que a tela tenha mostrado o formulário errado
+        // por engano — troca sozinho pra tela de senha, em vez de
+        // deixar a pessoa travada sem saída.
+        if (resultado.erro && resultado.erro.includes('já tem uma conta')) {
+          setEhPrimeiroAcesso(false);
+          setErro('Essa conta já existe — digite sua senha abaixo.');
+        } else {
+          setErro(resultado.erro || 'Não foi possível criar sua conta.');
+        }
+        setCarregando(false);
+        return;
+      }
 
       await supabase.auth.setSession({ access_token: resultado.access_token, refresh_token: resultado.refresh_token });
       router.push('/dashboard');
