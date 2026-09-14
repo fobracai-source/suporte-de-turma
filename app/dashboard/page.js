@@ -199,6 +199,14 @@ export default function PaginaDashboard() {
 
       {perfil.tipo === 'aluno' && (
         <button
+          onClick={() => router.push('/ranking-turma')}
+          style={{ width: '100%', padding: 14, marginBottom: 12, borderRadius: 8, border: '1.5px solid #F2C94C', background: '#FFFBEB', color: '#8A6D1E', fontWeight: 'bold', fontSize: 13, cursor: 'pointer' }}>
+          🏆 Ranking da Turma
+        </button>
+      )}
+
+      {perfil.tipo === 'aluno' && (
+        <button
           onClick={() => router.push('/denunciar-colega')}
           style={{ width: '100%', padding: 14, marginBottom: 20, borderRadius: 8, border: '1.5px solid #7B68EE', background: 'white', color: '#7B68EE', fontWeight: 'bold', fontSize: 13, cursor: 'pointer' }}>
           🙊 Meu colega atrapalha!
