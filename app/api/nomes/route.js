@@ -7,7 +7,7 @@
 //      /api/nomes?tipo=professor
 export const dynamic = 'force-dynamic';
 
-import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { supabaseAdmin, jsonSemCache } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
 
 export async function GET(req) {
@@ -25,7 +25,7 @@ export async function GET(req) {
       .order('nome');
 
     if (error) return NextResponse.json({ ok: false, erro: error.message }, { status: 500 });
-    return NextResponse.json({ ok: true, nomes: data });
+    return jsonSemCache({ ok: true, nomes: data });
   }
 
   if (tipo === 'professor') {
@@ -35,7 +35,7 @@ export async function GET(req) {
       .order('nome');
 
     if (error) return NextResponse.json({ ok: false, erro: error.message }, { status: 500 });
-    return NextResponse.json({ ok: true, nomes: data });
+    return jsonSemCache({ ok: true, nomes: data });
   }
 
   return NextResponse.json({ ok: false, erro: 'Tipo inválido.' }, { status: 400 });
