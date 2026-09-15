@@ -9,6 +9,10 @@
       "schedule": "0 12 * * *"
     },
     {
+      "path": "/api/cron/fechar-semana",
+      "schedule": "0 8 * * 1"
+    },
+    {
       "path": "/api/cron/enviar-digests",
       "schedule": "0 21 * * *"
     }
