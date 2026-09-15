@@ -34,6 +34,7 @@ export default function PaginaAdmin() {
   const [tituloPremio, setTituloPremio] = useState('');
   const [descricaoPremio, setDescricaoPremio] = useState('');
   const [emojiPremio, setEmojiPremio] = useState('🏆');
+  const [editandoRecompensaId, setEditandoRecompensaId] = useState(null);
 
   // Professor
   const [nomeProfessor, setNomeProfessor] = useState('');
@@ -185,6 +186,55 @@ export default function PaginaAdmin() {
         return [...semODuplicado, dados.premio].sort((a, b) => a.posicao - b.posicao);
       });
       setPosicaoPremio(''); setTituloPremio(''); setDescricaoPremio(''); setEmojiPremio('🏆');
+    }
+  }
+
+  function comecarEdicaoPremio(premio) {
+    setPosicaoPremio(premio.posicao);
+    setTituloPremio(premio.titulo);
+    setDescricaoPremio(premio.descricao || '');
+    setEmojiPremio(premio.emoji);
+  }
+
+  async function excluirPremioSemanal(id) {
+    if (!confirm('Excluir esse prêmio? Não dá pra desfazer.')) return;
+    const dados = await chamarApi('/api/admin/excluir-premio-semanal', { id });
+    if (dados) {
+      setSucesso('Prêmio excluído!');
+      setPremiosSemanais((atual) => atual.filter((p) => p.id !== id));
+    }
+  }
+
+  function comecarEdicaoRecompensa(recompensa) {
+    setEditandoRecompensaId(recompensa.id);
+    setTituloRecompensa(recompensa.titulo);
+    setDescricaoRecompensa(recompensa.descricao || '');
+    setPontosRecompensa(String(recompensa.pontos_necessarios));
+    setEmojiRecompensa(recompensa.emoji);
+  }
+
+  function cancelarEdicaoRecompensa() {
+    setEditandoRecompensaId(null);
+    setTituloRecompensa(''); setDescricaoRecompensa(''); setPontosRecompensa(''); setEmojiRecompensa('🎁');
+  }
+
+  async function salvarEdicaoRecompensa() {
+    const dados = await chamarApi('/api/admin/atualizar-recompensa', {
+      id: editandoRecompensaId, titulo: tituloRecompensa, descricao: descricaoRecompensa, pontosNecessarios: Number(pontosRecompensa), emoji: emojiRecompensa
+    });
+    if (dados) {
+      setSucesso('Recompensa atualizada!');
+      setRecompensas((atual) => atual.map((r) => (r.id === dados.recompensa.id ? dados.recompensa : r)).sort((a, b) => a.pontos_necessarios - b.pontos_necessarios));
+      cancelarEdicaoRecompensa();
+    }
+  }
+
+  async function excluirRecompensa(id) {
+    if (!confirm('Excluir essa recompensa? Não dá pra desfazer.')) return;
+    const dados = await chamarApi('/api/admin/excluir-recompensa', { id });
+    if (dados) {
+      setSucesso('Recompensa excluída!');
+      setRecompensas((atual) => atual.filter((r) => r.id !== id));
     }
   }
 
@@ -509,6 +559,12 @@ export default function PaginaAdmin() {
             🎁 Cada recompensa fica "desbloqueada" pro aluno assim que ele atingir a quantidade de pontos necessária. A entrega da recompensa na vida real (elogio, prêmio, etc.) fica combinada por fora — o sistema só mostra o progresso.
           </div>
 
+          {editandoRecompensaId && (
+            <div style={{ background: '#FFFBEB', color: '#8A6D1E', padding: 10, borderRadius: 8, marginBottom: 14, fontSize: 12.5 }}>
+              ✏️ Editando recompensa — <button onClick={cancelarEdicaoRecompensa} style={{ background: 'none', border: 'none', color: '#8A6D1E', textDecoration: 'underline', cursor: 'pointer', fontWeight: 'bold', fontSize: 12.5, padding: 0 }}>cancelar</button>
+            </div>
+          )}
+
           <label style={estiloRotulo}>Título</label>
           <input type="text" value={tituloRecompensa} onChange={(e) => setTituloRecompensa(e.target.value)} style={estiloCampo} placeholder="Ex.: Elogio no boletim" />
 
@@ -521,7 +577,9 @@ export default function PaginaAdmin() {
           <label style={estiloRotulo}>Emoji</label>
           <input type="text" value={emojiRecompensa} onChange={(e) => setEmojiRecompensa(e.target.value)} style={estiloCampo} maxLength={4} />
 
-          <button onClick={criarRecompensa} disabled={enviando} style={estiloBotao}>{enviando ? 'Criando...' : 'Criar recompensa'}</button>
+          <button onClick={editandoRecompensaId ? salvarEdicaoRecompensa : criarRecompensa} disabled={enviando} style={estiloBotao}>
+            {enviando ? 'Salvando...' : (editandoRecompensaId ? 'Salvar edição' : 'Criar recompensa')}
+          </button>
 
           <h3 style={{ fontSize: 15, marginTop: 28, marginBottom: 12 }}>Recompensas já cadastradas</h3>
           {recompensas.length === 0 && <p style={{ color: '#888', fontSize: 13 }}>Nenhuma ainda.</p>}
@@ -529,6 +587,10 @@ export default function PaginaAdmin() {
             <div key={r.id} style={{ padding: 12, borderRadius: 10, border: '1.5px solid #eee', marginBottom: 8 }}>
               <p style={{ margin: 0, fontWeight: 'bold', fontSize: 13 }}>{r.emoji} {r.titulo} — {r.pontos_necessarios} pontos</p>
               {r.descricao && <p style={{ margin: '4px 0 0 0', fontSize: 12, color: '#888' }}>{r.descricao}</p>}
+              <div style={{ marginTop: 8, display: 'flex', gap: 12 }}>
+                <button onClick={() => comecarEdicaoRecompensa(r)} style={{ background: 'none', border: 'none', color: '#6C5CE7', fontSize: 11.5, fontWeight: 'bold', cursor: 'pointer', padding: 0 }}>✏️ Editar</button>
+                <button onClick={() => excluirRecompensa(r.id)} style={{ background: 'none', border: 'none', color: '#C93B26', fontSize: 11.5, fontWeight: 'bold', cursor: 'pointer', padding: 0 }}>🗑️ Excluir</button>
+              </div>
             </div>
           ))}
         </div>
@@ -538,6 +600,8 @@ export default function PaginaAdmin() {
         <div>
           <div style={{ background: '#FFFBEB', color: '#8A6D1E', padding: 12, borderRadius: 8, marginBottom: 18, fontSize: 12.5, lineHeight: 1.6 }}>
             🏆 Configure o prêmio de cada posição do ranking semanal (1º, 2º, 3º lugar...). Toda segunda-feira, o sistema fecha a semana sozinho, decide o pódio de cada turma, e avisa os vencedores por e-mail.
+            <br /><br />
+            Pra <b>editar</b> um prêmio já existente, clique em "✏️ Editar" na lista abaixo — o formulário preenche sozinho.
           </div>
 
           <label style={estiloRotulo}>Posição</label>
@@ -560,6 +624,10 @@ export default function PaginaAdmin() {
             <div key={p.id} style={{ padding: 12, borderRadius: 10, border: '1.5px solid #eee', marginBottom: 8 }}>
               <p style={{ margin: 0, fontWeight: 'bold', fontSize: 13 }}>{p.emoji} {p.posicao}º lugar — {p.titulo}</p>
               {p.descricao && <p style={{ margin: '4px 0 0 0', fontSize: 12, color: '#888' }}>{p.descricao}</p>}
+              <div style={{ marginTop: 8, display: 'flex', gap: 12 }}>
+                <button onClick={() => comecarEdicaoPremio(p)} style={{ background: 'none', border: 'none', color: '#8A6D1E', fontSize: 11.5, fontWeight: 'bold', cursor: 'pointer', padding: 0 }}>✏️ Editar</button>
+                <button onClick={() => excluirPremioSemanal(p.id)} style={{ background: 'none', border: 'none', color: '#C93B26', fontSize: 11.5, fontWeight: 'bold', cursor: 'pointer', padding: 0 }}>🗑️ Excluir</button>
+              </div>
             </div>
           ))}
         </div>
