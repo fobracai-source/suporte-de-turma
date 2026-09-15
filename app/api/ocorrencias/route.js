@@ -2,8 +2,10 @@
 // Registra uma ocorrência. Confere, no servidor, que quem está
 // mandando é mesmo um professor, e que a turma escolhida é dele —
 // mesmo que alguém tente "forçar" outro valor mexendo na requisição.
+// Depois de gravar, avisa a família por e-mail, se já tiver cadastrado.
 import { createClient } from '@supabase/supabase-js';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { enviarEmail } from '@/lib/email';
 import { NextResponse } from 'next/server';
 
 export async function POST(req) {
@@ -33,7 +35,7 @@ export async function POST(req) {
     return NextResponse.json({ ok: false, erro: 'Essa conta não é de um professor.' }, { status: 403 });
   }
 
-  const { turmaId, alunoId, disciplina, motivosAtividades, motivosDisciplina, detalhamento } = await req.json();
+  const { turmaId, alunoId, disciplina, motivosAtividades, motivosDisciplina, detalhamento, arquivos } = await req.json();
 
   if (!turmaId || !alunoId) {
     return NextResponse.json({ ok: false, erro: 'Selecione a turma e o aluno.' }, { status: 400 });
@@ -45,7 +47,6 @@ export async function POST(req) {
     return NextResponse.json({ ok: false, erro: 'Selecione pelo menos um motivo.' }, { status: 400 });
   }
 
-  // Confere que a turma é mesmo do professor
   const { data: turmaDele } = await supabaseAdmin
     .from('professor_turmas')
     .select('turma_id')
@@ -57,10 +58,9 @@ export async function POST(req) {
     return NextResponse.json({ ok: false, erro: 'Essa turma não está vinculada ao seu cadastro.' }, { status: 403 });
   }
 
-  // Confere que o aluno é mesmo dessa turma
   const { data: alunoDaTurma } = await supabaseAdmin
     .from('alunos')
-    .select('id')
+    .select('id, nome, email_familia')
     .eq('id', alunoId)
     .eq('turma_id', turmaId)
     .maybeSingle();
@@ -69,7 +69,6 @@ export async function POST(req) {
     return NextResponse.json({ ok: false, erro: 'Esse aluno não pertence a essa turma.' }, { status: 400 });
   }
 
-  // Confere que a disciplina escolhida é mesmo do professor
   const { data: disciplinaDele } = await supabaseAdmin
     .from('professor_disciplinas')
     .select('disciplina')
@@ -96,7 +95,8 @@ export async function POST(req) {
       motivos_disciplina: motivosDisciplina || [],
       detalhamento: detalhamento || '',
       origem: 'MANUAL',
-      professor_nome: professor.nome
+      professor_nome: professor.nome,
+      anexos: arquivos || []
     })
     .select()
     .single();
@@ -105,5 +105,26 @@ export async function POST(req) {
     return NextResponse.json({ ok: false, erro: erroGravar.message }, { status: 500 });
   }
 
-  return NextResponse.json({ ok: true, ocorrenciaId: ocorrenciaCriada.id });
+  let emailEnviado = false;
+  if (alunoDaTurma.email_familia) {
+    const motivos = [...(motivosAtividades || []), ...(motivosDisciplina || [])];
+    const resultadoEmail = await enviarEmail({
+      para: alunoDaTurma.email_familia,
+      assunto: `Ocorrência registrada — ${alunoDaTurma.nome}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 480px;">
+          <h2 style="color:#FF7A59;">Ocorrência registrada</h2>
+          <p>Olá! Informamos que uma ocorrência foi registrada para <b>${alunoDaTurma.nome}</b>.</p>
+          <p><b>Disciplina:</b> ${disciplina}</p>
+          <p><b>Motivo(s):</b> ${motivos.join(', ')}</p>
+          ${detalhamento ? `<p><b>Observação:</b> ${detalhamento}</p>` : ''}
+          <p style="color:#888; font-size:12px;">Registrado por: ${professor.nome}</p>
+        </div>
+      `,
+      texto: `Ocorrência registrada para ${alunoDaTurma.nome}.\nDisciplina: ${disciplina}\nMotivo(s): ${motivos.join(', ')}\n${detalhamento ? 'Observação: ' + detalhamento : ''}\nRegistrado por: ${professor.nome}`
+    });
+    emailEnviado = resultadoEmail.enviado;
+  }
+
+  return NextResponse.json({ ok: true, ocorrenciaId: ocorrenciaCriada.id, emailEnviado });
 }
