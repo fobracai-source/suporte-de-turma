@@ -206,6 +206,14 @@ export default function PaginaDashboard() {
         </div>
       )}
 
+      {perfil.tipo === 'professor' && (
+        <button
+          onClick={() => router.push('/professor/mural-turma')}
+          style={{ width: '100%', padding: 14, marginBottom: 10, borderRadius: 8, border: 'none', background: '#F2C94C', color: '#8A6D1E', fontWeight: 'bold', fontSize: 13, cursor: 'pointer' }}>
+          📢 Mural de Avisos e Chat
+        </button>
+      )}
+
       {perfil.tipo === 'aluno' && (
         <div style={{ display: 'flex', gap: 10, marginBottom: 12 }}>
           <button
@@ -226,6 +234,14 @@ export default function PaginaDashboard() {
           onClick={() => router.push('/ranking-turma')}
           style={{ width: '100%', padding: 14, marginBottom: 12, borderRadius: 8, border: '1.5px solid #F2C94C', background: '#FFFBEB', color: '#8A6D1E', fontWeight: 'bold', fontSize: 13, cursor: 'pointer' }}>
           🏆 Ranking da Turma
+        </button>
+      )}
+
+      {perfil.tipo === 'aluno' && (
+        <button
+          onClick={() => router.push('/mural-turma')}
+          style={{ width: '100%', padding: 14, marginBottom: 12, borderRadius: 8, border: 'none', background: '#F2C94C', color: '#8A6D1E', fontWeight: 'bold', fontSize: 13, cursor: 'pointer' }}>
+          📢 Mural de Avisos e Chat
         </button>
       )}
 
