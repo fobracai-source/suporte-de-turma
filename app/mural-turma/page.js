@@ -3,19 +3,17 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 
-export default function PaginaMuralTurmaProfessor() {
+export default function PaginaMuralTurma() {
   const router = useRouter();
   const [carregando, setCarregando] = useState(true);
-  const [accessToken, setAccessToken] = useState('');
-  const [turmas, setTurmas] = useState([]);
-  const [turmaId, setTurmaId] = useState('');
   const [aba, setAba] = useState('avisos');
+  const [turmaId, setTurmaId] = useState(null);
   const [avisos, setAvisos] = useState([]);
   const [mensagensChat, setMensagensChat] = useState([]);
-  const [textoAviso, setTextoAviso] = useState('');
   const [textoChat, setTextoChat] = useState('');
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState('');
+  const [accessToken, setAccessToken] = useState('');
 
   useEffect(() => {
     async function carregar() {
@@ -23,23 +21,15 @@ export default function PaginaMuralTurmaProfessor() {
       if (!session) { router.push('/login'); return; }
       setAccessToken(session.access_token);
 
-      const resposta = await fetch('/api/professor/minhas-turmas-disciplinas', {
-        headers: { Authorization: `Bearer ${session.access_token}` }
-      });
-      const dados = await resposta.json();
-      if (dados.ok) setTurmas(dados.turmas);
+      const { data: aluno } = await supabase.from('alunos').select('turma_id').eq('auth_user_id', session.user.id).maybeSingle();
+      if (!aluno) { setErro('Essa conta não é de um aluno.'); setCarregando(false); return; }
+      setTurmaId(aluno.turma_id);
+
+      await carregarMensagens(aluno.turma_id);
       setCarregando(false);
     }
     carregar();
   }, [router]);
-
-  async function mudarTurma(id) {
-    setTurmaId(id);
-    setAvisos([]);
-    setMensagensChat([]);
-    if (!id) return;
-    await carregarMensagens(id);
-  }
 
   async function carregarMensagens(idDaTurma) {
     const { data } = await supabase
@@ -52,20 +42,19 @@ export default function PaginaMuralTurmaProfessor() {
     setMensagensChat((data || []).filter((m) => m.tipo === 'chat').reverse());
   }
 
-  async function enviarMensagem(tipo) {
-    const texto = tipo === 'aviso' ? textoAviso : textoChat;
-    if (!texto.trim()) return;
+  async function enviarChat() {
+    if (!textoChat.trim()) return;
     setErro('');
     setEnviando(true);
     try {
       const resposta = await fetch('/api/mural/enviar-mensagem', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
-        body: JSON.stringify({ turmaId, tipo, mensagem: texto })
+        body: JSON.stringify({ turmaId, tipo: 'chat', mensagem: textoChat })
       });
       const dados = await resposta.json();
       if (!dados.ok) { setErro(dados.erro); setEnviando(false); return; }
-      if (tipo === 'aviso') setTextoAviso(''); else setTextoChat('');
+      setTextoChat('');
       await carregarMensagens(turmaId);
     } catch (e) {
       setErro('Erro inesperado: ' + e.message);
@@ -92,71 +81,51 @@ export default function PaginaMuralTurmaProfessor() {
         </div>
       )}
 
-      <label style={{ display: 'block', fontWeight: 'bold', fontSize: 13, marginBottom: 6 }}>Turma</label>
-      <select value={turmaId} onChange={(e) => mudarTurma(e.target.value)} style={{ width: '100%', padding: 12, borderRadius: 8, border: '1.5px solid #ddd', fontSize: 14, marginBottom: 20, boxSizing: 'border-box' }}>
-        <option value="">Selecione...</option>
-        {turmas.map((t) => <option key={t.id} value={t.id}>{t.nome}</option>)}
-      </select>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 18 }}>
+        <button onClick={() => setAba('avisos')} style={estiloAba(aba === 'avisos')}>📌 Avisos</button>
+        <button onClick={() => setAba('chat')} style={estiloAba(aba === 'chat')}>💬 Chat da turma</button>
+      </div>
 
-      {turmaId && (
-        <>
-          <div style={{ display: 'flex', gap: 8, marginBottom: 18 }}>
-            <button onClick={() => setAba('avisos')} style={estiloAba(aba === 'avisos')}>📌 Avisos</button>
-            <button onClick={() => setAba('chat')} style={estiloAba(aba === 'chat')}>💬 Chat da turma</button>
+      {aba === 'avisos' && (
+        <div>
+          {avisos.length === 0 && <p style={{ color: '#888', fontSize: 14 }}>Nenhum aviso publicado ainda.</p>}
+          {avisos.map((a) => (
+            <div key={a.id} style={{ padding: 14, borderRadius: 10, border: '1.5px solid #F2C94C', background: '#FFFBEB', marginBottom: 10 }}>
+              <p style={{ margin: 0, fontSize: 11, color: '#8A6D1E', fontWeight: 'bold' }}>{a.autor_nome} • {new Date(a.criado_em).toLocaleString('pt-BR')}</p>
+              <p style={{ margin: '6px 0 0 0', fontSize: 14, color: '#333' }}>{a.mensagem}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {aba === 'chat' && (
+        <div>
+          <div style={{ marginBottom: 14 }}>
+            {mensagensChat.length === 0 && <p style={{ color: '#888', fontSize: 14 }}>Nenhuma mensagem ainda. Seja o primeiro a escrever!</p>}
+            {mensagensChat.map((m) => (
+              <div key={m.id} style={{ padding: 10, borderRadius: 10, background: m.autor_tipo === 'professor' ? '#F4F2FF' : '#F8F8F8', marginBottom: 8 }}>
+                <p style={{ margin: 0, fontSize: 11, fontWeight: 'bold', color: m.autor_tipo === 'professor' ? '#6C5CE7' : '#555' }}>
+                  {m.autor_tipo === 'professor' ? '👩‍🏫 ' : ''}{m.autor_nome} • {new Date(m.criado_em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                </p>
+                <p style={{ margin: '4px 0 0 0', fontSize: 13.5, color: '#333' }}>{m.mensagem}</p>
+              </div>
+            ))}
           </div>
 
-          {aba === 'avisos' && (
-            <div>
-              <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-                <input
-                  type="text" value={textoAviso} onChange={(e) => setTextoAviso(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter') enviarMensagem('aviso'); }}
-                  placeholder="Escreva um aviso pra turma..."
-                  style={{ flex: 1, padding: 12, borderRadius: 8, border: '1.5px solid #ddd', fontSize: 14 }}
-                />
-                <button onClick={() => enviarMensagem('aviso')} disabled={enviando} style={{ padding: '0 20px', borderRadius: 8, border: 'none', background: '#F2C94C', color: '#8A6D1E', fontWeight: 'bold', cursor: 'pointer' }}>
-                  Publicar
-                </button>
-              </div>
-
-              {avisos.length === 0 && <p style={{ color: '#888', fontSize: 14 }}>Nenhum aviso publicado ainda.</p>}
-              {avisos.map((a) => (
-                <div key={a.id} style={{ padding: 14, borderRadius: 10, border: '1.5px solid #F2C94C', background: '#FFFBEB', marginBottom: 10 }}>
-                  <p style={{ margin: 0, fontSize: 11, color: '#8A6D1E', fontWeight: 'bold' }}>{a.autor_nome} • {new Date(a.criado_em).toLocaleString('pt-BR')}</p>
-                  <p style={{ margin: '6px 0 0 0', fontSize: 14, color: '#333' }}>{a.mensagem}</p>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {aba === 'chat' && (
-            <div>
-              <div style={{ marginBottom: 14 }}>
-                {mensagensChat.length === 0 && <p style={{ color: '#888', fontSize: 14 }}>Nenhuma mensagem ainda.</p>}
-                {mensagensChat.map((m) => (
-                  <div key={m.id} style={{ padding: 10, borderRadius: 10, background: m.autor_tipo === 'professor' ? '#F4F2FF' : '#F8F8F8', marginBottom: 8 }}>
-                    <p style={{ margin: 0, fontSize: 11, fontWeight: 'bold', color: m.autor_tipo === 'professor' ? '#6C5CE7' : '#555' }}>
-                      {m.autor_tipo === 'professor' ? '👩‍🏫 ' : ''}{m.autor_nome} • {new Date(m.criado_em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                    </p>
-                    <p style={{ margin: '4px 0 0 0', fontSize: 13.5, color: '#333' }}>{m.mensagem}</p>
-                  </div>
-                ))}
-              </div>
-
-              <div style={{ display: 'flex', gap: 8 }}>
-                <input
-                  type="text" value={textoChat} onChange={(e) => setTextoChat(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter') enviarMensagem('chat'); }}
-                  placeholder="Escreva uma mensagem..."
-                  style={{ flex: 1, padding: 12, borderRadius: 8, border: '1.5px solid #ddd', fontSize: 14 }}
-                />
-                <button onClick={() => enviarMensagem('chat')} disabled={enviando} style={{ padding: '0 20px', borderRadius: 8, border: 'none', background: '#6C5CE7', color: 'white', fontWeight: 'bold', cursor: 'pointer' }}>
-                  {enviando ? '...' : 'Enviar'}
-                </button>
-              </div>
-            </div>
-          )}
-        </>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <input
+              type="text"
+              value={textoChat}
+              onChange={(e) => setTextoChat(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') enviarChat(); }}
+              placeholder="Escreva uma mensagem..."
+              style={{ flex: 1, padding: 12, borderRadius: 8, border: '1.5px solid #ddd', fontSize: 14 }}
+            />
+            <button onClick={enviarChat} disabled={enviando} style={{ padding: '0 20px', borderRadius: 8, border: 'none', background: '#6C5CE7', color: 'white', fontWeight: 'bold', cursor: 'pointer' }}>
+              {enviando ? '...' : 'Enviar'}
+            </button>
+          </div>
+        </div>
       )}
     </main>
   );
