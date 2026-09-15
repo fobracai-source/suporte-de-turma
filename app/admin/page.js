@@ -21,6 +21,20 @@ export default function PaginaAdmin() {
   const [statusRemetentes, setStatusRemetentes] = useState(null);
   const [camposRemetentes, setCamposRemetentes] = useState({ remetente1Email: '', remetente1Senha: '', remetente2Email: '', remetente2Senha: '', remetente3Email: '', remetente3Senha: '' });
 
+  // Recompensas
+  const [recompensas, setRecompensas] = useState([]);
+  const [tituloRecompensa, setTituloRecompensa] = useState('');
+  const [descricaoRecompensa, setDescricaoRecompensa] = useState('');
+  const [pontosRecompensa, setPontosRecompensa] = useState('');
+  const [emojiRecompensa, setEmojiRecompensa] = useState('🎁');
+
+  // Prêmios semanais
+  const [premiosSemanais, setPremiosSemanais] = useState([]);
+  const [posicaoPremio, setPosicaoPremio] = useState('');
+  const [tituloPremio, setTituloPremio] = useState('');
+  const [descricaoPremio, setDescricaoPremio] = useState('');
+  const [emojiPremio, setEmojiPremio] = useState('🏆');
+
   // Professor
   const [nomeProfessor, setNomeProfessor] = useState('');
   const [professoresExistentes, setProfessoresExistentes] = useState([]);
@@ -81,6 +95,12 @@ export default function PaginaAdmin() {
         const respostaStatus = await fetch('/api/admin/status-remetentes', { headers: { Authorization: `Bearer ${session.access_token}` } });
         const dadosStatus = await respostaStatus.json();
         if (dadosStatus.ok) setStatusRemetentes(dadosStatus);
+
+        const { data: recompensasExistentes } = await supabase.from('recompensas').select('id, titulo, descricao, pontos_necessarios, emoji').order('pontos_necessarios');
+        setRecompensas(recompensasExistentes || []);
+
+        const { data: premiosExistentes } = await supabase.from('premios_semanais').select('id, posicao, titulo, descricao, emoji').order('posicao');
+        setPremiosSemanais(premiosExistentes || []);
       }
       setCarregando(false);
     }
@@ -140,6 +160,31 @@ export default function PaginaAdmin() {
       const respostaStatus = await fetch('/api/admin/status-remetentes', { headers: { Authorization: `Bearer ${accessToken}` } });
       const dadosStatus = await respostaStatus.json();
       if (dadosStatus.ok) setStatusRemetentes(dadosStatus);
+    }
+  }
+
+  async function criarRecompensa() {
+    const dados = await chamarApi('/api/admin/criar-recompensa', {
+      titulo: tituloRecompensa, descricao: descricaoRecompensa, pontosNecessarios: Number(pontosRecompensa), emoji: emojiRecompensa
+    });
+    if (dados) {
+      setSucesso(`Recompensa "${dados.recompensa.titulo}" criada!`);
+      setRecompensas((atual) => [...atual, dados.recompensa].sort((a, b) => a.pontos_necessarios - b.pontos_necessarios));
+      setTituloRecompensa(''); setDescricaoRecompensa(''); setPontosRecompensa(''); setEmojiRecompensa('🎁');
+    }
+  }
+
+  async function salvarPremioSemanal() {
+    const dados = await chamarApi('/api/admin/criar-premio-semanal', {
+      posicao: Number(posicaoPremio), titulo: tituloPremio, descricao: descricaoPremio, emoji: emojiPremio
+    });
+    if (dados) {
+      setSucesso(`Prêmio do ${dados.premio.posicao}º lugar salvo!`);
+      setPremiosSemanais((atual) => {
+        const semODuplicado = atual.filter((p) => p.posicao !== dados.premio.posicao);
+        return [...semODuplicado, dados.premio].sort((a, b) => a.posicao - b.posicao);
+      });
+      setPosicaoPremio(''); setTituloPremio(''); setDescricaoPremio(''); setEmojiPremio('🏆');
     }
   }
 
@@ -259,6 +304,8 @@ export default function PaginaAdmin() {
         <button onClick={() => { setAba('aluno'); setErro(''); setSucesso(''); }} style={estiloAba(aba === 'aluno')}>Aluno</button>
         <button onClick={() => { setAba('importar'); setErro(''); setSucesso(''); }} style={estiloAba(aba === 'importar')}>Importar</button>
         <button onClick={() => { setAba('email'); setErro(''); setSucesso(''); }} style={estiloAba(aba === 'email')}>E-mail</button>
+        <button onClick={() => { setAba('recompensas'); setErro(''); setSucesso(''); }} style={estiloAba(aba === 'recompensas')}>Recompensas</button>
+        <button onClick={() => { setAba('premios'); setErro(''); setSucesso(''); }} style={estiloAba(aba === 'premios')}>Prêmios Semanais</button>
       </div>
 
       {erro && <div style={{ background: '#FFEDEA', color: '#C93B26', padding: 12, borderRadius: 8, marginBottom: 14, fontSize: 13.5 }}>⚠️ {erro}</div>}
@@ -453,6 +500,68 @@ export default function PaginaAdmin() {
           <p style={{ fontSize: 11.5, color: '#999', marginBottom: 14 }}>Deixe em branco o que não quiser alterar — só é atualizado o que você preencher.</p>
 
           <button onClick={salvarRemetentes} disabled={enviando} style={estiloBotao}>{enviando ? 'Salvando...' : 'Salvar remetentes'}</button>
+        </div>
+      )}
+
+      {aba === 'recompensas' && (
+        <div>
+          <div style={{ background: '#F4F2FF', color: '#4E3FC7', padding: 12, borderRadius: 8, marginBottom: 18, fontSize: 12.5, lineHeight: 1.6 }}>
+            🎁 Cada recompensa fica "desbloqueada" pro aluno assim que ele atingir a quantidade de pontos necessária. A entrega da recompensa na vida real (elogio, prêmio, etc.) fica combinada por fora — o sistema só mostra o progresso.
+          </div>
+
+          <label style={estiloRotulo}>Título</label>
+          <input type="text" value={tituloRecompensa} onChange={(e) => setTituloRecompensa(e.target.value)} style={estiloCampo} placeholder="Ex.: Elogio no boletim" />
+
+          <label style={estiloRotulo}>Descrição <span style={{ fontWeight: 400, color: '#999' }}>(opcional)</span></label>
+          <textarea value={descricaoRecompensa} onChange={(e) => setDescricaoRecompensa(e.target.value)} style={{ ...estiloCampo, minHeight: 60 }} />
+
+          <label style={estiloRotulo}>Pontos necessários</label>
+          <input type="number" value={pontosRecompensa} onChange={(e) => setPontosRecompensa(e.target.value)} style={estiloCampo} placeholder="Ex.: 100" />
+
+          <label style={estiloRotulo}>Emoji</label>
+          <input type="text" value={emojiRecompensa} onChange={(e) => setEmojiRecompensa(e.target.value)} style={estiloCampo} maxLength={4} />
+
+          <button onClick={criarRecompensa} disabled={enviando} style={estiloBotao}>{enviando ? 'Criando...' : 'Criar recompensa'}</button>
+
+          <h3 style={{ fontSize: 15, marginTop: 28, marginBottom: 12 }}>Recompensas já cadastradas</h3>
+          {recompensas.length === 0 && <p style={{ color: '#888', fontSize: 13 }}>Nenhuma ainda.</p>}
+          {recompensas.map((r) => (
+            <div key={r.id} style={{ padding: 12, borderRadius: 10, border: '1.5px solid #eee', marginBottom: 8 }}>
+              <p style={{ margin: 0, fontWeight: 'bold', fontSize: 13 }}>{r.emoji} {r.titulo} — {r.pontos_necessarios} pontos</p>
+              {r.descricao && <p style={{ margin: '4px 0 0 0', fontSize: 12, color: '#888' }}>{r.descricao}</p>}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {aba === 'premios' && (
+        <div>
+          <div style={{ background: '#FFFBEB', color: '#8A6D1E', padding: 12, borderRadius: 8, marginBottom: 18, fontSize: 12.5, lineHeight: 1.6 }}>
+            🏆 Configure o prêmio de cada posição do ranking semanal (1º, 2º, 3º lugar...). Toda segunda-feira, o sistema fecha a semana sozinho, decide o pódio de cada turma, e avisa os vencedores por e-mail.
+          </div>
+
+          <label style={estiloRotulo}>Posição</label>
+          <input type="number" min="1" value={posicaoPremio} onChange={(e) => setPosicaoPremio(e.target.value)} style={estiloCampo} placeholder="Ex.: 1" />
+
+          <label style={estiloRotulo}>Título do prêmio</label>
+          <input type="text" value={tituloPremio} onChange={(e) => setTituloPremio(e.target.value)} style={estiloCampo} placeholder="Ex.: Vale-lanche na cantina" />
+
+          <label style={estiloRotulo}>Descrição <span style={{ fontWeight: 400, color: '#999' }}>(opcional)</span></label>
+          <textarea value={descricaoPremio} onChange={(e) => setDescricaoPremio(e.target.value)} style={{ ...estiloCampo, minHeight: 50 }} />
+
+          <label style={estiloRotulo}>Emoji</label>
+          <input type="text" value={emojiPremio} onChange={(e) => setEmojiPremio(e.target.value)} style={estiloCampo} maxLength={4} />
+
+          <button onClick={salvarPremioSemanal} disabled={enviando} style={estiloBotao}>{enviando ? 'Salvando...' : 'Salvar prêmio'}</button>
+
+          <h3 style={{ fontSize: 15, marginTop: 28, marginBottom: 12 }}>Prêmios configurados</h3>
+          {premiosSemanais.length === 0 && <p style={{ color: '#888', fontSize: 13 }}>Nenhum ainda — sem prêmio configurado, o ranking roda mas ninguém é premiado.</p>}
+          {premiosSemanais.map((p) => (
+            <div key={p.id} style={{ padding: 12, borderRadius: 10, border: '1.5px solid #eee', marginBottom: 8 }}>
+              <p style={{ margin: 0, fontWeight: 'bold', fontSize: 13 }}>{p.emoji} {p.posicao}º lugar — {p.titulo}</p>
+              {p.descricao && <p style={{ margin: '4px 0 0 0', fontSize: 12, color: '#888' }}>{p.descricao}</p>}
+            </div>
+          ))}
         </div>
       )}
     </main>
