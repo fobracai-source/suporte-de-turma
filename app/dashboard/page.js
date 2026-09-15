@@ -246,6 +246,14 @@ export default function PaginaDashboard() {
 
       {perfil.tipo === 'aluno' && (
         <button
+          onClick={() => router.push('/ranking-semanal')}
+          style={{ width: '100%', padding: 16, marginBottom: 12, borderRadius: 8, border: 'none', background: 'linear-gradient(135deg, #F2C94C, #F2994A)', color: '#4A2E0A', fontWeight: 'bold', fontSize: 14, cursor: 'pointer' }}>
+          🏅 Ranking Semanal — Ganhe prêmios de verdade!
+        </button>
+      )}
+
+      {perfil.tipo === 'aluno' && (
+        <button
           onClick={() => router.push('/ranking-turma')}
           style={{ width: '100%', padding: 14, marginBottom: 12, borderRadius: 8, border: '1.5px solid #F2C94C', background: '#FFFBEB', color: '#8A6D1E', fontWeight: 'bold', fontSize: 13, cursor: 'pointer' }}>
           🏆 Ranking da Turma
