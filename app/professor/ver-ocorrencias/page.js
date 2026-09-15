@@ -8,6 +8,8 @@ export default function PaginaVerOcorrencias() {
   const [carregando, setCarregando] = useState(true);
   const [ocorrencias, setOcorrencias] = useState([]);
   const [defesasPorOcorrencia, setDefesasPorOcorrencia] = useState({});
+  const [alunosParaFiltro, setAlunosParaFiltro] = useState([]);
+  const [filtroAlunoId, setFiltroAlunoId] = useState('');
   const [erro, setErro] = useState('');
 
   useEffect(() => {
@@ -19,11 +21,22 @@ export default function PaginaVerOcorrencias() {
       // turmas desse professor.
       const { data, error } = await supabase
         .from('ocorrencias')
-        .select('id, disciplina, tipo, motivos_atividades, motivos_disciplina, detalhamento, professor_nome, criado_em, alunos(nome), turmas(nome)')
+        .select('id, aluno_id, disciplina, tipo, motivos_atividades, motivos_disciplina, detalhamento, professor_nome, criado_em, alunos(nome), turmas(nome)')
         .order('criado_em', { ascending: false });
 
       if (error) { setErro(error.message); setCarregando(false); return; }
       setOcorrencias(data || []);
+
+      // Monta a lista de alunos pro filtro, a partir de quem já
+      // aparece nas ocorrências (sem precisar de outra consulta)
+      const mapaAlunos = {};
+      (data || []).forEach((oc) => {
+        if (oc.aluno_id && oc.alunos?.nome) mapaAlunos[oc.aluno_id] = oc.alunos.nome;
+      });
+      const listaAlunos = Object.entries(mapaAlunos)
+        .map(([id, nome]) => ({ id, nome }))
+        .sort((a, b) => a.nome.localeCompare(b.nome));
+      setAlunosParaFiltro(listaAlunos);
 
       const { data: defesas } = await supabase
         .from('defesa_ocorrencias')
@@ -55,9 +68,18 @@ export default function PaginaVerOcorrencias() {
         </div>
       )}
 
+      <label style={{ display: 'block', fontWeight: 'bold', fontSize: 13, marginBottom: 6 }}>Filtrar por aluno</label>
+      <select
+        value={filtroAlunoId}
+        onChange={(e) => setFiltroAlunoId(e.target.value)}
+        style={{ width: '100%', padding: 12, borderRadius: 8, border: '1.5px solid #ddd', fontSize: 14, marginBottom: 20, boxSizing: 'border-box' }}>
+        <option value="">Todos</option>
+        {alunosParaFiltro.map((a) => <option key={a.id} value={a.id}>{a.nome}</option>)}
+      </select>
+
       {ocorrencias.length === 0 && <p style={{ color: '#888', fontSize: 14 }}>Nenhuma ocorrência registrada ainda.</p>}
 
-      {ocorrencias.map((oc) => {
+      {ocorrencias.filter((oc) => !filtroAlunoId || String(oc.aluno_id) === String(filtroAlunoId)).map((oc) => {
         const motivos = [...(oc.motivos_atividades || []), ...(oc.motivos_disciplina || [])];
         const defesa = defesasPorOcorrencia[oc.id];
 
