@@ -19,6 +19,9 @@ export default function PaginaRegistrarOcorrencia() {
   const [motivosAtividades, setMotivosAtividades] = useState([]);
   const [motivosDisciplina, setMotivosDisciplina] = useState([]);
   const [detalhamento, setDetalhamento] = useState('');
+  const [arquivosSelecionados, setArquivosSelecionados] = useState([]);
+  const [professorId, setProfessorId] = useState(null);
+  const [enviandoArquivos, setEnviandoArquivos] = useState(false);
 
   const [erro, setErro] = useState('');
   const [enviando, setEnviando] = useState(false);
@@ -37,6 +40,7 @@ export default function PaginaRegistrarOcorrencia() {
       if (dados.ok) {
         setTurmas(dados.turmas);
         setDisciplinas(dados.disciplinas);
+        setProfessorId(dados.professorId);
       }
 
       const { data: tipos } = await supabase.from('tipos_ocorrencia').select('id, categoria, texto').order('texto');
@@ -61,6 +65,18 @@ export default function PaginaRegistrarOcorrencia() {
     setLista(lista.includes(valor) ? lista.filter((v) => v !== valor) : [...lista, valor]);
   }
 
+  async function fazerUploadDosArquivos() {
+    const caminhos = [];
+    for (const arquivo of arquivosSelecionados) {
+      const nomeSeguro = arquivo.name.replace(/[^a-zA-Z0-9.\-_]/g, '_');
+      const caminho = `professor-${professorId}/${turmaId}-${alunoId}/${Date.now()}-${nomeSeguro}`;
+      const { error } = await supabase.storage.from('anexos').upload(caminho, arquivo);
+      if (error) throw new Error(`Erro ao enviar o arquivo "${arquivo.name}": ${error.message}`);
+      caminhos.push(caminho);
+    }
+    return caminhos;
+  }
+
   async function registrar() {
     setErro('');
     if (!turmaId) { setErro('Selecione a turma.'); return; }
@@ -70,10 +86,17 @@ export default function PaginaRegistrarOcorrencia() {
 
     setEnviando(true);
     try {
+      let caminhosArquivos = [];
+      if (arquivosSelecionados.length > 0) {
+        setEnviandoArquivos(true);
+        caminhosArquivos = await fazerUploadDosArquivos();
+        setEnviandoArquivos(false);
+      }
+
       const resposta = await fetch('/api/ocorrencias', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
-        body: JSON.stringify({ turmaId, alunoId, disciplina, motivosAtividades, motivosDisciplina, detalhamento })
+        body: JSON.stringify({ turmaId, alunoId, disciplina, motivosAtividades, motivosDisciplina, detalhamento, arquivos: caminhosArquivos })
       });
       const dados = await resposta.json();
       if (!dados.ok) { setErro(dados.erro); setEnviando(false); return; }
@@ -81,6 +104,7 @@ export default function PaginaRegistrarOcorrencia() {
     } catch (e) {
       setErro('Erro inesperado: ' + e.message);
       setEnviando(false);
+      setEnviandoArquivos(false);
     }
   }
 
@@ -88,6 +112,7 @@ export default function PaginaRegistrarOcorrencia() {
     setMotivosAtividades([]);
     setMotivosDisciplina([]);
     setDetalhamento('');
+    setArquivosSelecionados([]);
     setSucesso(false);
   }
 
@@ -166,8 +191,20 @@ export default function PaginaRegistrarOcorrencia() {
       <label style={estiloRotulo}>Observações (opcional)</label>
       <textarea value={detalhamento} onChange={(e) => setDetalhamento(e.target.value)} style={{ ...estiloCampo, minHeight: 80 }} />
 
+      <label style={estiloRotulo}>Anexar arquivo (opcional)</label>
+      <input
+        type="file" multiple
+        onChange={(e) => setArquivosSelecionados(Array.from(e.target.files))}
+        style={{ width: '100%', fontSize: 12.5, marginBottom: 16 }}
+      />
+      {arquivosSelecionados.length > 0 && (
+        <p style={{ marginTop: -10, marginBottom: 16, fontSize: 12, color: '#6C5CE7' }}>
+          {arquivosSelecionados.length} arquivo(s) selecionado(s)
+        </p>
+      )}
+
       <button onClick={registrar} disabled={enviando} style={{ width: '100%', padding: 14, borderRadius: 8, border: 'none', background: '#FF7A59', color: 'white', fontWeight: 'bold', fontSize: 15, cursor: 'pointer' }}>
-        {enviando ? 'Registrando...' : 'Registrar ocorrência'}
+        {enviandoArquivos ? 'Enviando arquivos...' : (enviando ? 'Registrando...' : 'Registrar ocorrência')}
       </button>
     </main>
   );
