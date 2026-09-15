@@ -73,14 +73,14 @@ export async function POST(req) {
 
   const gabarito = atividade.gabarito || [];
   let notaDestaTentativa = null;
+  let acertosDestaTentativa = 0;
 
   if (gabarito.length > 0) {
-    let acertos = 0;
     gabarito.forEach((respostaCerta, indice) => {
       const respostaAluno = String((respostas || [])[indice] || '').trim().toUpperCase();
-      if (respostaAluno === String(respostaCerta).trim().toUpperCase()) acertos++;
+      if (respostaAluno === String(respostaCerta).trim().toUpperCase()) acertosDestaTentativa++;
     });
-    notaDestaTentativa = Math.round((acertos / gabarito.length) * atividade.valor_nota * 100) / 100;
+    notaDestaTentativa = Math.round((acertosDestaTentativa / gabarito.length) * atividade.valor_nota * 100) / 100;
   }
 
   const { error: erroGravar } = await supabaseAdmin
@@ -106,6 +106,36 @@ export async function POST(req) {
     notaMedia = Math.round((somaNotas / todasAsNotas.length) * 100) / 100;
   }
   const aindaPodeTentar = todasAsNotas.length < LIMITE_TENTATIVAS;
+
+  // ── PONTOS DE GAMIFICAÇÃO ────────────────────────────────────────
+  // Só na PRIMEIRA tentativa dessa atividade — assim o aluno não ganha
+  // ponto de novo só por tentar de novo a mesma atividade. A regra:
+  //   - Entrega NO PRAZO: 250 pontos + 50 por questão certa
+  //   - Entrega FORA DO PRAZO: 75 pontos + 25 por questão certa
+  //   - Atividade sem gabarito (trabalho/entrega): só o valor "por
+  //     entrega" — não tem questão pra contar acerto
+  if (todasAsNotas.length === 1) {
+    const prazoFinal = atividade.data_final ? new Date(atividade.data_final + 'T23:59:59') : null;
+    const noPrazo = !prazoFinal || new Date() <= prazoFinal;
+
+    const pontosPorEntrega = noPrazo ? 250 : 75;
+    const pontosPorAcerto = noPrazo ? 50 : 25;
+    const pontosDeAcertos = gabarito.length > 0 ? acertosDestaTentativa * pontosPorAcerto : 0;
+    const pontosGanhos = pontosPorEntrega + pontosDeAcertos;
+
+    const descricao = gabarito.length > 0
+      ? `Entregou "${atividade.tema}" ${noPrazo ? 'no prazo' : 'fora do prazo'} (${acertosDestaTentativa} acerto${acertosDestaTentativa === 1 ? '' : 's'})`
+      : `Entregou "${atividade.tema}" ${noPrazo ? 'no prazo' : 'fora do prazo'}`;
+
+    await supabaseAdmin.from('pontos_historico').insert({
+      aluno_id: aluno.id,
+      pontos: pontosGanhos,
+      origem: 'entrega',
+      descricao,
+      referencia_id: atividadeId
+    });
+    await supabaseAdmin.rpc('incrementar_pontos_aluno', { p_aluno_id: aluno.id, p_pontos: pontosGanhos });
+  }
 
   // Manda o e-mail de confirmação — só se o aluno já tiver um e-mail
   // cadastrado de verdade. Segue a mesma regra do resto do sistema:
