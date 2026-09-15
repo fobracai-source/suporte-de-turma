@@ -42,11 +42,13 @@ export default function PaginaMuralTurmaProfessor() {
   }
 
   async function carregarMensagens(idDaTurma) {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('mural_mensagens')
       .select('id, tipo, autor_nome, autor_tipo, mensagem, criado_em')
       .eq('turma_id', idDaTurma)
       .order('criado_em', { ascending: false });
+
+    if (error) { setErro('Não consegui carregar as mensagens: ' + error.message); return; }
 
     setAvisos((data || []).filter((m) => m.tipo === 'aviso'));
     setMensagensChat((data || []).filter((m) => m.tipo === 'chat').reverse());
