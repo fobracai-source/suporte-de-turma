@@ -122,10 +122,13 @@ export default function PaginaLogin() {
 
     setEnviandoRecuperacao(true);
     try {
-      const resposta = await fetch('/api/aluno/esqueci-senha', {
+      const caminho = tipo === 'professor' ? '/api/professor/esqueci-senha' : '/api/aluno/esqueci-senha';
+      const corpo = tipo === 'professor' ? { nome, email: emailRecuperacao } : { turmaId, nome, email: emailRecuperacao };
+
+      const resposta = await fetch(caminho, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ turmaId, nome, email: emailRecuperacao })
+        body: JSON.stringify(corpo)
       });
       const dados = await resposta.json();
       setMensagemRecuperacao(dados.mensagem || 'Não foi possível processar seu pedido.');
@@ -240,8 +243,7 @@ export default function PaginaLogin() {
             {carregando ? 'Entrando...' : 'Entrar'}
           </button>
 
-          {tipo === 'aluno' && (
-            <div style={{ marginTop: 14, textAlign: 'center' }}>
+          <div style={{ marginTop: 14, textAlign: 'center' }}>
               {!mostrarEsqueciSenha ? (
                 <button
                   onClick={() => { setMostrarEsqueciSenha(true); setMensagemRecuperacao(''); setEmailRecuperacao(''); }}
@@ -269,7 +271,6 @@ export default function PaginaLogin() {
                 </div>
               )}
             </div>
-          )}
         </>
       )}
 
