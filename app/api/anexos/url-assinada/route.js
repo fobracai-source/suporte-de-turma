@@ -71,6 +71,21 @@ export async function POST(req) {
       }
       temPermissao = (aluno && aluno.id === registro.aluno_id) || ehProfessorDaTurma;
     }
+  } else if (tipo === 'material') {
+    const { data: registro } = await supabaseAdmin
+      .from('materiais')
+      .select('turma_id, professor_id, caminho_arquivo')
+      .eq('id', registroId)
+      .maybeSingle();
+    if (registro && registro.caminho_arquivo === caminhoArquivo) {
+      let ehProfessorDaTurma = false;
+      if (professor) {
+        const { data: vinculo } = await supabaseAdmin.from('professor_turmas').select('turma_id').eq('professor_id', professor.id).eq('turma_id', registro.turma_id).maybeSingle();
+        ehProfessorDaTurma = !!vinculo;
+      }
+      const ehAlunoDaTurma = aluno && (await supabaseAdmin.from('alunos').select('id').eq('id', aluno.id).eq('turma_id', registro.turma_id).maybeSingle()).data;
+      temPermissao = !!ehAlunoDaTurma || ehProfessorDaTurma;
+    }
   } else {
     return NextResponse.json({ ok: false, erro: 'Tipo inválido.' }, { status: 400 });
   }
