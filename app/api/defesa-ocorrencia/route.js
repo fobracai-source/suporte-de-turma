@@ -33,7 +33,7 @@ export async function POST(req) {
     return NextResponse.json({ ok: false, erro: 'Essa conta não é de um aluno.' }, { status: 403 });
   }
 
-  const { ocorrenciaId, justificativa, naoQuisJustificar } = await req.json();
+  const { ocorrenciaId, justificativa, naoQuisJustificar, arquivos } = await req.json();
   if (!ocorrenciaId) {
     return NextResponse.json({ ok: false, erro: 'Ocorrência não informada.' }, { status: 400 });
   }
@@ -69,7 +69,8 @@ export async function POST(req) {
     aluno_id: aluno.id,
     turma_id: ocorrencia.turma_id,
     justificativa: naoQuisJustificar ? '' : String(justificativa || '').trim(),
-    nao_quis_justificar: !!naoQuisJustificar
+    nao_quis_justificar: !!naoQuisJustificar,
+    anexos: arquivos || []
   });
 
   if (erroGravar) {
