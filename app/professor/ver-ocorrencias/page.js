@@ -21,7 +21,7 @@ export default function PaginaVerOcorrencias() {
       // turmas desse professor.
       const { data, error } = await supabase
         .from('ocorrencias')
-        .select('id, aluno_id, disciplina, tipo, motivos_atividades, motivos_disciplina, detalhamento, professor_nome, criado_em, alunos(nome), turmas(nome)')
+        .select('id, aluno_id, disciplina, tipo, motivos_atividades, motivos_disciplina, detalhamento, professor_nome, anexos, criado_em, alunos(nome), turmas(nome)')
         .order('criado_em', { ascending: false });
 
       if (error) { setErro(error.message); setCarregando(false); return; }
@@ -40,7 +40,7 @@ export default function PaginaVerOcorrencias() {
 
       const { data: defesas } = await supabase
         .from('defesa_ocorrencias')
-        .select('ocorrencia_id, justificativa, nao_quis_justificar, criado_em');
+        .select('id, ocorrencia_id, justificativa, nao_quis_justificar, anexos, criado_em');
 
       const mapa = {};
       (defesas || []).forEach((d) => { mapa[d.ocorrencia_id] = d; });
@@ -50,6 +50,18 @@ export default function PaginaVerOcorrencias() {
     }
     carregar();
   }, [router]);
+
+  async function abrirAnexo(tipo, registroId, caminhoArquivo) {
+    const { data: { session } } = await supabase.auth.getSession();
+    const resposta = await fetch('/api/anexos/url-assinada', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+      body: JSON.stringify({ tipo, registroId, caminhoArquivo })
+    });
+    const dados = await resposta.json();
+    if (dados.ok) window.open(dados.url, '_blank');
+    else alert('Não consegui abrir o anexo: ' + dados.erro);
+  }
 
   if (carregando) return <main style={{ maxWidth: 480, margin: '60px auto', textAlign: 'center' }}>Carregando...</main>;
 
@@ -102,6 +114,16 @@ export default function PaginaVerOcorrencias() {
             </div>
 
             {oc.detalhamento && <p style={{ margin: '6px 0 0 0', fontSize: 12.5, color: '#555', fontStyle: 'italic' }}>"{oc.detalhamento}"</p>}
+
+            {(oc.anexos || []).length > 0 && (
+              <div style={{ marginTop: 6 }}>
+                {oc.anexos.map((caminho, i) => (
+                  <button key={i} onClick={() => abrirAnexo('ocorrencia', oc.id, caminho)} style={{ display: 'inline-block', marginRight: 6, marginBottom: 6, padding: '5px 10px', borderRadius: 12, border: '1.5px solid #FF7A59', background: 'white', color: '#FF7A59', fontSize: 11, fontWeight: 'bold', cursor: 'pointer' }}>
+                    📎 Anexo {i + 1}
+                  </button>
+                ))}
+              </div>
+            )}
             <p style={{ margin: '8px 0 0 0', fontSize: 11, color: '#aaa' }}>Registrado por: {oc.professor_nome}</p>
 
             <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid #f2f2f2' }}>
@@ -115,6 +137,15 @@ export default function PaginaVerOcorrencias() {
                 <div>
                   <p style={{ margin: 0, fontSize: 11.5, fontWeight: 'bold', color: '#6C5CE7' }}>🛡️ Defesa do aluno:</p>
                   <p style={{ margin: '4px 0 0 0', fontSize: 12.5, color: '#555', fontStyle: 'italic' }}>"{defesa.justificativa}"</p>
+                </div>
+              )}
+              {defesa && (defesa.anexos || []).length > 0 && (
+                <div style={{ marginTop: 8 }}>
+                  {defesa.anexos.map((caminho, i) => (
+                    <button key={i} onClick={() => abrirAnexo('defesa', defesa.id, caminho)} style={{ display: 'inline-block', marginRight: 6, marginBottom: 6, padding: '5px 10px', borderRadius: 12, border: '1.5px solid #6C5CE7', background: 'white', color: '#6C5CE7', fontSize: 11, fontWeight: 'bold', cursor: 'pointer' }}>
+                      📎 Anexo da defesa {i + 1}
+                    </button>
+                  ))}
                 </div>
               )}
             </div>
