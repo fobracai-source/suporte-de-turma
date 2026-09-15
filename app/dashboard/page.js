@@ -176,6 +176,14 @@ export default function PaginaDashboard() {
       )}
 
       {perfil.tipo === 'professor' && (
+        <button
+          onClick={() => router.push('/professor/visao-turma')}
+          style={{ width: '100%', padding: 14, marginBottom: 10, borderRadius: 8, border: 'none', background: '#2D3436', color: 'white', fontWeight: 'bold', fontSize: 13, cursor: 'pointer' }}>
+          🔍 Visão Geral da Turma
+        </button>
+      )}
+
+      {perfil.tipo === 'professor' && (
         <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
           <button
             onClick={() => router.push('/professor/registrar-ocorrencia')}
