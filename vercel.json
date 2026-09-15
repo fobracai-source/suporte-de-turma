@@ -5,6 +5,10 @@
       "schedule": "0 9 * * *"
     },
     {
+      "path": "/api/cron/lembretes-agenda",
+      "schedule": "0 12 * * *"
+    },
+    {
       "path": "/api/cron/enviar-digests",
       "schedule": "0 21 * * *"
     }
