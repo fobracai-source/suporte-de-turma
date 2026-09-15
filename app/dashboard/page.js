@@ -214,6 +214,21 @@ export default function PaginaDashboard() {
         </button>
       )}
 
+      {perfil.tipo === 'professor' && (
+        <div style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
+          <button
+            onClick={() => router.push('/professor/agenda')}
+            style={{ flex: 1, padding: 14, borderRadius: 8, border: '1.5px solid #6C5CE7', background: 'white', color: '#6C5CE7', fontWeight: 'bold', fontSize: 13, cursor: 'pointer' }}>
+            📅 Agenda
+          </button>
+          <button
+            onClick={() => router.push('/professor/materiais')}
+            style={{ flex: 1, padding: 14, borderRadius: 8, border: '1.5px solid #6C5CE7', background: 'white', color: '#6C5CE7', fontWeight: 'bold', fontSize: 13, cursor: 'pointer' }}>
+            📚 Materiais
+          </button>
+        </div>
+      )}
+
       {perfil.tipo === 'aluno' && (
         <div style={{ display: 'flex', gap: 10, marginBottom: 12 }}>
           <button
@@ -242,6 +257,29 @@ export default function PaginaDashboard() {
           onClick={() => router.push('/mural-turma')}
           style={{ width: '100%', padding: 14, marginBottom: 12, borderRadius: 8, border: 'none', background: '#F2C94C', color: '#8A6D1E', fontWeight: 'bold', fontSize: 13, cursor: 'pointer' }}>
           📢 Mural de Avisos e Chat
+        </button>
+      )}
+
+      {perfil.tipo === 'aluno' && (
+        <div style={{ display: 'flex', gap: 10, marginBottom: 12 }}>
+          <button
+            onClick={() => router.push('/agenda')}
+            style={{ flex: 1, padding: 14, borderRadius: 8, border: '1.5px solid #6C5CE7', background: 'white', color: '#6C5CE7', fontWeight: 'bold', fontSize: 13, cursor: 'pointer' }}>
+            📅 Agenda
+          </button>
+          <button
+            onClick={() => router.push('/materiais')}
+            style={{ flex: 1, padding: 14, borderRadius: 8, border: '1.5px solid #6C5CE7', background: 'white', color: '#6C5CE7', fontWeight: 'bold', fontSize: 13, cursor: 'pointer' }}>
+            📚 Materiais
+          </button>
+        </div>
+      )}
+
+      {perfil.tipo === 'aluno' && (
+        <button
+          onClick={() => router.push('/gamificacao')}
+          style={{ width: '100%', padding: 14, marginBottom: 12, borderRadius: 8, border: 'none', background: 'linear-gradient(135deg, #6C5CE7, #8E7CFB)', color: 'white', fontWeight: 'bold', fontSize: 13, cursor: 'pointer' }}>
+          🎮 Gamificação
         </button>
       )}
 
