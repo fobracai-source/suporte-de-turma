@@ -15,12 +15,17 @@ export default function PaginaMinhasOcorrencias() {
   const [justificativa, setJustificativa] = useState('');
   const [naoQuerJustificar, setNaoQuerJustificar] = useState(false);
   const [enviando, setEnviando] = useState(false);
+  const [arquivosDefesa, setArquivosDefesa] = useState([]);
+  const [alunoId, setAlunoId] = useState(null);
 
   useEffect(() => {
     async function carregar() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) { router.push('/login'); return; }
       setAccessToken(session.access_token);
+
+      const { data: aluno } = await supabase.from('alunos').select('id').eq('auth_user_id', session.user.id).maybeSingle();
+      if (aluno) setAlunoId(aluno.id);
 
       // A segurança (RLS) já garante que só vêm as ocorrências do
       // próprio aluno logado.
@@ -46,6 +51,7 @@ export default function PaginaMinhasOcorrencias() {
     setOcorrenciaAberta(ocorrenciaId);
     setJustificativa('');
     setNaoQuerJustificar(false);
+    setArquivosDefesa([]);
     setErro('');
   }
 
@@ -58,13 +64,23 @@ export default function PaginaMinhasOcorrencias() {
     setEnviando(true);
 
     try {
+      let caminhosArquivos = [];
+      for (const arquivo of arquivosDefesa) {
+        const nomeSeguro = arquivo.name.replace(/[^a-zA-Z0-9.\-_]/g, '_');
+        const caminho = `aluno-${alunoId}/defesa-${ocorrenciaId}/${Date.now()}-${nomeSeguro}`;
+        const { error: erroUpload } = await supabase.storage.from('anexos').upload(caminho, arquivo);
+        if (erroUpload) throw new Error(`Erro ao enviar o arquivo "${arquivo.name}": ${erroUpload.message}`);
+        caminhosArquivos.push(caminho);
+      }
+
       const resposta = await fetch('/api/defesa-ocorrencia', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
         body: JSON.stringify({
           ocorrenciaId,
           justificativa,
-          naoQuisJustificar: naoQuerJustificar
+          naoQuisJustificar: naoQuerJustificar,
+          arquivos: caminhosArquivos
         })
       });
       const dados = await resposta.json();
@@ -140,6 +156,11 @@ export default function PaginaMinhasOcorrencias() {
                   <input type="checkbox" checked={naoQuerJustificar} onChange={(e) => setNaoQuerJustificar(e.target.checked)} />
                   Não quero justificar
                 </label>
+                <input
+                  type="file" multiple
+                  onChange={(e) => setArquivosDefesa(Array.from(e.target.files))}
+                  style={{ width: '100%', fontSize: 12, marginBottom: 10 }}
+                />
                 <div style={{ display: 'flex', gap: 8 }}>
                   <button onClick={() => enviarDefesa(oc.id)} disabled={enviando} style={{ flex: 1, padding: 10, borderRadius: 8, border: 'none', background: '#6C5CE7', color: 'white', fontWeight: 'bold', fontSize: 13, cursor: 'pointer' }}>
                     {enviando ? 'Enviando...' : 'Enviar'}
