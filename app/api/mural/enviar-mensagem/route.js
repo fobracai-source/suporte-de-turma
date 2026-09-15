@@ -66,5 +66,32 @@ export async function POST(req) {
     return NextResponse.json({ ok: false, erro: error.message }, { status: 500 });
   }
 
+  // Ponto de participação no chat — 50 pontos, só UMA VEZ por semana
+  // (não é por mensagem — é só "participou essa semana ou não")
+  if (dadosAutor.autor_tipo === 'aluno' && tipo === 'chat') {
+    const hoje = new Date();
+    const diaDaSemana = hoje.getDay(); // 0 = domingo
+    const inicioDaSemana = new Date(hoje);
+    inicioDaSemana.setDate(hoje.getDate() - (diaDaSemana === 0 ? 6 : diaDaSemana - 1));
+    inicioDaSemana.setHours(0, 0, 0, 0);
+
+    const { count } = await supabaseAdmin
+      .from('pontos_historico')
+      .select('id', { count: 'exact', head: true })
+      .eq('aluno_id', dadosAutor.aluno_id)
+      .eq('origem', 'chat')
+      .gte('criado_em', inicioDaSemana.toISOString());
+
+    if ((count || 0) === 0) {
+      await supabaseAdmin.from('pontos_historico').insert({
+        aluno_id: dadosAutor.aluno_id,
+        pontos: 50,
+        origem: 'chat',
+        descricao: 'Participou do chat da turma essa semana'
+      });
+      await supabaseAdmin.rpc('incrementar_pontos_aluno', { p_aluno_id: dadosAutor.aluno_id, p_pontos: 50 });
+    }
+  }
+
   return NextResponse.json({ ok: true });
 }
