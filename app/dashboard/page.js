@@ -184,6 +184,14 @@ export default function PaginaDashboard() {
       )}
 
       {perfil.tipo === 'professor' && (
+        <button
+          onClick={() => router.push('/professor/analise-questoes')}
+          style={{ width: '100%', padding: 14, marginBottom: 10, borderRadius: 8, border: '1.5px solid #2D3436', background: 'white', color: '#2D3436', fontWeight: 'bold', fontSize: 13, cursor: 'pointer' }}>
+          🏆 Questões com mais erro
+        </button>
+      )}
+
+      {perfil.tipo === 'professor' && (
         <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
           <button
             onClick={() => router.push('/professor/registrar-ocorrencia')}
