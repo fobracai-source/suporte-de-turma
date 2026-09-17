@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 
@@ -15,6 +15,8 @@ export default function PaginaResponderAtividade() {
   const [avaliacao, setAvaliacao] = useState(0);
   const [observacoes, setObservacoes] = useState('');
   const [feedbackAula, setFeedbackAula] = useState('');
+  const [mostrarAvisoEstrelas, setMostrarAvisoEstrelas] = useState(false);
+  const timeoutAvisoRef = useRef(null);
   const [arquivosSelecionados, setArquivosSelecionados] = useState([]);
   const [enviandoArquivos, setEnviandoArquivos] = useState(false);
   const [alunoId, setAlunoId] = useState(null);
@@ -24,6 +26,10 @@ export default function PaginaResponderAtividade() {
   const [jaAtingiuMaximo, setJaAtingiuMaximo] = useState(false);
   const [infoTentativas, setInfoTentativas] = useState(null);
   const [accessToken, setAccessToken] = useState('');
+
+  useEffect(() => {
+    return () => { if (timeoutAvisoRef.current) clearTimeout(timeoutAvisoRef.current); };
+  }, []);
 
   useEffect(() => {
     async function carregar() {
@@ -101,7 +107,9 @@ export default function PaginaResponderAtividade() {
       return;
     }
     if (!avaliacao || avaliacao < 1) {
-      setErro('Aluno, é obrigatório avaliar a aula!');
+      setMostrarAvisoEstrelas(true);
+      if (timeoutAvisoRef.current) clearTimeout(timeoutAvisoRef.current);
+      timeoutAvisoRef.current = setTimeout(() => setMostrarAvisoEstrelas(false), 4000);
       return;
     }
 
@@ -216,6 +224,34 @@ export default function PaginaResponderAtividade() {
 
   return (
     <main style={{ maxWidth: 480, margin: '0 auto', padding: 24 }}>
+      <style>{`
+        @keyframes piscarAviso {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.55; transform: scale(0.97); }
+        }
+      `}</style>
+
+      {mostrarAvisoEstrelas && (
+        <div
+          onClick={() => setMostrarAvisoEstrelas(false)}
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            zIndex: 9999, padding: 24
+          }}>
+          <div
+            style={{
+              background: '#FF5C5C', color: 'white', padding: '22px 20px', borderRadius: 16,
+              maxWidth: 320, textAlign: 'center', boxShadow: '0 10px 30px rgba(0,0,0,0.3)',
+              animation: 'piscarAviso 0.7s ease-in-out infinite'
+            }}>
+            <p style={{ margin: 0, fontWeight: 'bold', fontSize: 16, lineHeight: 1.4 }}>
+              ⚠️ Aluno, é obrigatório avaliar a aula! Use as estrelinhas!
+            </p>
+          </div>
+        </div>
+      )}
+
       <h1 style={{ fontSize: 18 }}>{atividade.tema}</h1>
       <p style={{ color: '#888', fontSize: 13 }}>{atividade.disciplina} — Aula {atividade.aula_numero}</p>
       {infoTentativas && infoTentativas.qtdTentativas > 0 && (
