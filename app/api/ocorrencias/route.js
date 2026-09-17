@@ -6,6 +6,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { enviarEmail } from '@/lib/email';
+import { verificarPenalidadeOcorrencia } from '@/lib/gamificacao';
 import { NextResponse } from 'next/server';
 
 export async function POST(req) {
@@ -125,6 +126,8 @@ export async function POST(req) {
     });
     emailEnviado = resultadoEmail.enviado;
   }
+
+  await verificarPenalidadeOcorrencia(alunoId);
 
   return NextResponse.json({ ok: true, ocorrenciaId: ocorrenciaCriada.id, emailEnviado });
 }
