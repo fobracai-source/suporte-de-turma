@@ -11,6 +11,7 @@
 //    nome de quem denunciou.
 import { createClient } from '@supabase/supabase-js';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { verificarPenalidadeOcorrencia } from '@/lib/gamificacao';
 import { NextResponse } from 'next/server';
 
 const ROTULO_DENUNCIA_ANONIMA = 'DENÚNCIA ANÔNIMA (COLEGA DE TURMA)';
@@ -107,6 +108,8 @@ export async function POST(req) {
   if (erroDenuncia) {
     return NextResponse.json({ ok: false, erro: erroDenuncia.message }, { status: 500 });
   }
+
+  await verificarPenalidadeOcorrencia(alunoDenunciadoId);
 
   return NextResponse.json({ ok: true });
 }
