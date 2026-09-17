@@ -5,6 +5,7 @@
 // (aluno só pode mandar mensagem de "chat").
 import { createClient } from '@supabase/supabase-js';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { verificarEPremiarMissoes } from '@/lib/gamificacao';
 import { NextResponse } from 'next/server';
 
 export async function POST(req) {
@@ -83,13 +84,17 @@ export async function POST(req) {
       .gte('criado_em', inicioDaSemana.toISOString());
 
     if ((count || 0) === 0) {
+      const { data: config } = await supabaseAdmin.from('configuracao_pontos').select('bonus_chat_semanal').eq('id', 1).maybeSingle();
+      const pontosChat = config?.bonus_chat_semanal ?? 50;
+
       await supabaseAdmin.from('pontos_historico').insert({
         aluno_id: dadosAutor.aluno_id,
-        pontos: 50,
+        pontos: pontosChat,
         origem: 'chat',
         descricao: 'Participou do chat da turma essa semana'
       });
-      await supabaseAdmin.rpc('incrementar_pontos_aluno', { p_aluno_id: dadosAutor.aluno_id, p_pontos: 50 });
+      await supabaseAdmin.rpc('incrementar_pontos_aluno', { p_aluno_id: dadosAutor.aluno_id, p_pontos: pontosChat });
+      await verificarEPremiarMissoes(dadosAutor.aluno_id);
     }
   }
 
