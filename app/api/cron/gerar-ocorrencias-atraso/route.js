@@ -7,6 +7,7 @@
 // o aluno entregar depois (mesmo atrasado), a ocorrência automática
 // correspondente é removida sozinha.
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { verificarPenalidadeOcorrencia } from '@/lib/gamificacao';
 import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
@@ -82,6 +83,7 @@ export async function GET(req) {
           professor_nome: ROTULO_SISTEMA,
           codigo_tema_ref: atividade.id
         });
+        await verificarPenalidadeOcorrencia(aluno.id);
         criadas++;
       }
     }
