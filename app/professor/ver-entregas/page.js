@@ -53,7 +53,7 @@ export default function PaginaVerEntregas() {
 
     const { data: entregasFeitas, error } = await supabase
       .from('entregas')
-      .select('id, aluno_id, nota_calculada, avaliacao, observacoes, arquivos, criado_em, alunos(nome)')
+      .select('id, aluno_id, nota_calculada, avaliacao, observacoes, feedback_aula, arquivos, criado_em, alunos(nome)')
       .eq('atividade_id', atividadeId)
       .order('criado_em', { ascending: false });
 
@@ -121,6 +121,17 @@ export default function PaginaVerEntregas() {
             <p style={{ margin: 0, fontSize: 22, fontWeight: 'bold', color: '#FF7A59' }}>{faltamEntregar.length}</p>
             <p style={{ margin: 0, fontSize: 11, color: '#888' }}>faltam entregar</p>
           </div>
+          <div style={{ flex: 1, background: '#FFFBEB', borderRadius: 10, padding: 12, textAlign: 'center' }}>
+            <p style={{ margin: 0, fontSize: 22, fontWeight: 'bold', color: '#F2994A' }}>
+              {(() => {
+                const comAvaliacao = entregas.filter((e) => e.avaliacao > 0);
+                if (comAvaliacao.length === 0) return '—';
+                const media = comAvaliacao.reduce((s, e) => s + e.avaliacao, 0) / comAvaliacao.length;
+                return `${Math.round(media * 20)}%`;
+              })()}
+            </p>
+            <p style={{ margin: 0, fontSize: 11, color: '#888' }}>avaliação da aula</p>
+          </div>
         </div>
       )}
 
@@ -138,6 +149,8 @@ export default function PaginaVerEntregas() {
           </div>
           <p style={{ margin: '4px 0 0 0', fontSize: 11, color: '#aaa' }}>{new Date(e.criado_em).toLocaleString('pt-BR')}</p>
           {e.observacoes && <p style={{ margin: '6px 0 0 0', fontSize: 12.5, color: '#555' }}>"{e.observacoes}"</p>}
+          {e.avaliacao > 0 && <p style={{ margin: '6px 0 0 0', fontSize: 12 }}>{'⭐'.repeat(e.avaliacao)}{'☆'.repeat(5 - e.avaliacao)} <span style={{ color: '#888' }}>({e.avaliacao * 20}%)</span></p>}
+          {e.feedback_aula && <p style={{ margin: '6px 0 0 0', fontSize: 12.5, color: '#6C5CE7', fontStyle: 'italic' }}>💬 "{e.feedback_aula}"</p>}
           {(e.arquivos || []).length > 0 && (
             <div style={{ marginTop: 8 }}>
               {e.arquivos.map((caminho, i) => (
