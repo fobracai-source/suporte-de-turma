@@ -10,6 +10,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { enviarEmail, escolherEmailValido } from '@/lib/email';
+import { verificarEPremiarMissoes } from '@/lib/gamificacao';
 import { NextResponse } from 'next/server';
 
 const LIMITE_TENTATIVAS = 3;
@@ -109,17 +110,16 @@ export async function POST(req) {
 
   // ── PONTOS DE GAMIFICAÇÃO ────────────────────────────────────────
   // Só na PRIMEIRA tentativa dessa atividade — assim o aluno não ganha
-  // ponto de novo só por tentar de novo a mesma atividade. A regra:
-  //   - Entrega NO PRAZO: 250 pontos + 50 por questão certa
-  //   - Entrega FORA DO PRAZO: 75 pontos + 25 por questão certa
-  //   - Atividade sem gabarito (trabalho/entrega): só o valor "por
-  //     entrega" — não tem questão pra contar acerto
+  // ponto de novo só por tentar de novo a mesma atividade. Os valores
+  // (250/75/50/25 etc.) são configuráveis pelo administrador — nunca
+  // ficam fixos aqui no código.
   if (todasAsNotas.length === 1) {
+    const { data: config } = await supabaseAdmin.from('configuracao_pontos').select('*').eq('id', 1).maybeSingle();
     const prazoFinal = atividade.data_final ? new Date(atividade.data_final + 'T23:59:59') : null;
     const noPrazo = !prazoFinal || new Date() <= prazoFinal;
 
-    const pontosPorEntrega = noPrazo ? 250 : 75;
-    const pontosPorAcerto = noPrazo ? 50 : 25;
+    const pontosPorEntrega = noPrazo ? config.entrega_no_prazo : config.entrega_fora_prazo;
+    const pontosPorAcerto = noPrazo ? config.ponto_por_acerto_no_prazo : config.ponto_por_acerto_fora_prazo;
     const pontosDeAcertos = gabarito.length > 0 ? acertosDestaTentativa * pontosPorAcerto : 0;
     const pontosGanhos = pontosPorEntrega + pontosDeAcertos;
 
@@ -135,6 +135,7 @@ export async function POST(req) {
       referencia_id: atividadeId
     });
     await supabaseAdmin.rpc('incrementar_pontos_aluno', { p_aluno_id: aluno.id, p_pontos: pontosGanhos });
+    await verificarEPremiarMissoes(aluno.id);
   }
 
   // Manda o e-mail de confirmação — só se o aluno já tiver um e-mail
