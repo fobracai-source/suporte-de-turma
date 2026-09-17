@@ -348,6 +348,10 @@ export default function PaginaAdmin() {
         </button>
       </div>
 
+      <button onClick={() => router.push('/admin/gamificacao')} style={{ width: '100%', padding: 12, marginBottom: 20, borderRadius: 8, border: 'none', background: 'linear-gradient(135deg, #6C5CE7, #8E7CFB)', color: 'white', fontWeight: 'bold', fontSize: 13, cursor: 'pointer' }}>
+        🎮 Configurar Gamificação (pontos, missões, penalidades)
+      </button>
+
       <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
         <button onClick={() => { setAba('turma'); setErro(''); setSucesso(''); }} style={estiloAba(aba === 'turma')}>Turma</button>
         <button onClick={() => { setAba('professor'); setErro(''); setSucesso(''); }} style={estiloAba(aba === 'professor')}>Professor</button>
