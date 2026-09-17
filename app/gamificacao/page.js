@@ -8,6 +8,7 @@ export default function PaginaGamificacao() {
   const [carregando, setCarregando] = useState(true);
   const [dados, setDados] = useState(null);
   const [erro, setErro] = useState('');
+  const [aba, setAba] = useState('missoes');
 
   useEffect(() => {
     async function carregar() {
@@ -26,7 +27,9 @@ export default function PaginaGamificacao() {
     carregar();
   }, [router]);
 
-  const iconePorOrigem = (origem) => (origem === 'entrega' ? '📝' : '💬');
+  const iconePorOrigem = { entrega: '📝', chat: '💬', missao: '🏅', sem_ocorrencia: '🛡️', penalidade: '⚠️' };
+  const medalha = (posicao) => (posicao === 1 ? '🥇' : posicao === 2 ? '🥈' : posicao === 3 ? '🥉' : `${posicao}º`);
+  const estiloAba = (ativa) => ({ flex: 1, padding: 10, borderRadius: 8, border: ativa ? '2px solid #6C5CE7' : '1.5px solid #ddd', background: ativa ? '#F4F2FF' : 'white', cursor: 'pointer', fontWeight: 'bold', fontSize: 12.5 });
 
   if (carregando) return <main style={{ maxWidth: 480, margin: '60px auto', textAlign: 'center' }}>Carregando...</main>;
 
@@ -48,46 +51,98 @@ export default function PaginaGamificacao() {
         </button>
       </div>
 
-      <div style={{ background: 'linear-gradient(135deg, #6C5CE7, #8E7CFB)', borderRadius: 16, padding: 24, textAlign: 'center', marginBottom: 24, color: 'white' }}>
+      {dados.novosNiveisConquistadosAgora.length > 0 && (
+        <div style={{ background: 'linear-gradient(135deg, #2ECC71, #27AE60)', borderRadius: 12, padding: 16, marginBottom: 16, color: 'white', textAlign: 'center' }}>
+          <p style={{ margin: 0, fontWeight: 'bold', fontSize: 15 }}>🎉 Você subiu de nível!</p>
+          {dados.novosNiveisConquistadosAgora.map((n, i) => (
+            <p key={i} style={{ margin: '4px 0 0 0', fontSize: 13 }}>{n.emoji} {n.missao} — Nível {n.nivel} (+{n.pontosBonus} pts)</p>
+          ))}
+        </div>
+      )}
+
+      <div style={{ background: 'linear-gradient(135deg, #6C5CE7, #8E7CFB)', borderRadius: 16, padding: 24, textAlign: 'center', marginBottom: 16, color: 'white' }}>
         <p style={{ margin: 0, fontSize: 13, opacity: 0.85 }}>Seus pontos</p>
         <p style={{ margin: '6px 0 0 0', fontSize: 46, fontWeight: 'bold' }}>{dados.pontosTotais} 🏆</p>
       </div>
 
-      <h2 style={{ fontSize: 16, marginBottom: 12 }}>🏅 Missões</h2>
-      {dados.missoes.map((m, i) => (
-        <div key={i} style={{ padding: 14, borderRadius: 10, border: m.concluida ? '1.5px solid #2ECC71' : '1.5px solid #eee', background: m.concluida ? '#E8F9EE' : 'white', marginBottom: 10 }}>
+      {dados.penalidadeOcorrencia.proximaPenalidade && (
+        <div style={{ background: '#FFF0EA', border: '1.5px solid #FF7A59', borderRadius: 10, padding: 12, marginBottom: 16, fontSize: 12.5, color: '#C0491F' }}>
+          ⚠️ Você tem {dados.penalidadeOcorrencia.totalOcorrencias} ocorrência(s). Ao chegar em {dados.penalidadeOcorrencia.proximaPenalidade.qtd_ocorrencias}, perde {dados.penalidadeOcorrencia.proximaPenalidade.pontos_perdidos} pontos.
+        </div>
+      )}
+      {dados.penalidadeOcorrencia.totalPerdido > 0 && (
+        <div style={{ background: '#FFEDEA', border: '1.5px solid #C93B26', borderRadius: 10, padding: 12, marginBottom: 16, fontSize: 12.5, color: '#C93B26' }}>
+          📉 Você já perdeu {dados.penalidadeOcorrencia.totalPerdido} pontos por causa de ocorrências.
+        </div>
+      )}
+
+      <div style={{ display: 'flex', gap: 8, marginBottom: 18 }}>
+        <button onClick={() => setAba('missoes')} style={estiloAba(aba === 'missoes')}>🏅 Missões</button>
+        <button onClick={() => setAba('ranking')} style={estiloAba(aba === 'ranking')}>📊 Ranking</button>
+        <button onClick={() => setAba('recompensas')} style={estiloAba(aba === 'recompensas')}>🎁 Prêmios</button>
+        <button onClick={() => setAba('historico')} style={estiloAba(aba === 'historico')}>📜 Extrato</button>
+      </div>
+
+      {aba === 'missoes' && dados.missoes.map((m, i) => (
+        <div key={i} style={{ padding: 14, borderRadius: 10, border: m.completouTudo ? '1.5px solid #2ECC71' : '1.5px solid #eee', background: m.completouTudo ? '#E8F9EE' : 'white', marginBottom: 10 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <p style={{ margin: 0, fontWeight: 'bold', fontSize: 14 }}>{m.emoji} {m.titulo} {m.concluida && '✓'}</p>
-            <p style={{ margin: 0, fontSize: 11, color: '#888' }}>{m.atual}/{m.meta}</p>
+            <p style={{ margin: 0, fontWeight: 'bold', fontSize: 14 }}>{m.emoji} {m.titulo} <span style={{ fontSize: 11, color: '#888', fontWeight: 'normal' }}>Nível {m.nivelAtual}/{m.nivelMaximo}</span></p>
           </div>
-          <p style={{ margin: '4px 0 8px 0', fontSize: 12, color: '#888' }}>{m.descricao}</p>
-          <div style={{ background: '#eee', borderRadius: 10, height: 8, overflow: 'hidden' }}>
-            <div style={{ width: `${m.percentual}%`, background: m.concluida ? '#2ECC71' : '#6C5CE7', height: '100%' }} />
-          </div>
+          {m.completouTudo ? (
+            <p style={{ margin: '6px 0 0 0', fontSize: 12, color: '#2ECC71', fontWeight: 'bold' }}>✓ Nível máximo alcançado!</p>
+          ) : (
+            <>
+              <p style={{ margin: '6px 0 8px 0', fontSize: 12, color: '#888' }}>Próximo: {m.descricaoProximoNivel} ({m.valorAtual}/{m.metaProximoNivel})</p>
+              <div style={{ background: '#eee', borderRadius: 10, height: 8, overflow: 'hidden' }}>
+                <div style={{ width: `${m.percentualProximoNivel}%`, background: '#6C5CE7', height: '100%' }} />
+              </div>
+            </>
+          )}
         </div>
       ))}
 
-      <h2 style={{ fontSize: 16, margin: '24px 0 12px 0' }}>🎁 Recompensas</h2>
-      {dados.recompensas.length === 0 && <p style={{ color: '#888', fontSize: 13 }}>Nenhuma recompensa configurada ainda.</p>}
-      {dados.recompensas.map((r, i) => (
-        <div key={i} style={{ padding: 14, borderRadius: 10, border: r.desbloqueada ? '1.5px solid #F2C94C' : '1.5px solid #eee', background: r.desbloqueada ? '#FFFBEB' : '#FAFAFA', marginBottom: 10, opacity: r.desbloqueada ? 1 : 0.6 }}>
-          <p style={{ margin: 0, fontWeight: 'bold', fontSize: 14 }}>{r.emoji} {r.titulo} {r.desbloqueada ? '🔓' : '🔒'}</p>
-          {r.descricao && <p style={{ margin: '4px 0 0 0', fontSize: 12, color: '#888' }}>{r.descricao}</p>}
-          <p style={{ margin: '4px 0 0 0', fontSize: 11, color: '#aaa' }}>{r.pontos_necessarios} pontos</p>
+      {aba === 'ranking' && (
+        <div>
+          <p style={{ fontSize: 12, color: '#888', marginBottom: 14 }}>Ranking geral da turma, por pontos acumulados (nunca zera).</p>
+          {dados.rankingGeral.map((a) => (
+            <div key={a.posicao} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: 12, borderRadius: 10, marginBottom: 8, border: a.souEu ? '2px solid #6C5CE7' : '1.5px solid #eee', background: a.souEu ? '#F4F2FF' : 'white' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ fontSize: 15, width: 26, textAlign: 'center' }}>{medalha(a.posicao)}</span>
+                <span style={{ fontWeight: a.souEu ? 'bold' : 'normal', fontSize: 13.5 }}>{a.nome}{a.souEu ? ' (você)' : ''}</span>
+              </div>
+              <p style={{ margin: 0, fontWeight: 'bold', color: '#6C5CE7', fontSize: 14 }}>{a.pontos} pts</p>
+            </div>
+          ))}
         </div>
-      ))}
+      )}
 
-      <h2 style={{ fontSize: 16, margin: '24px 0 12px 0' }}>📜 Histórico recente</h2>
-      {dados.historico.length === 0 && <p style={{ color: '#888', fontSize: 13 }}>Nenhum ponto ganho ainda — responda uma atividade!</p>}
-      {dados.historico.map((h, i) => (
-        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 14px', borderBottom: '1px solid #f2f2f2' }}>
-          <div>
-            <p style={{ margin: 0, fontSize: 13 }}>{iconePorOrigem(h.origem)} {h.descricao}</p>
-            <p style={{ margin: 0, fontSize: 10.5, color: '#aaa' }}>{new Date(h.criado_em).toLocaleString('pt-BR')}</p>
-          </div>
-          <p style={{ margin: 0, fontWeight: 'bold', color: '#2ECC71', fontSize: 14 }}>+{h.pontos}</p>
+      {aba === 'recompensas' && (
+        <div>
+          {dados.recompensas.length === 0 && <p style={{ color: '#888', fontSize: 13 }}>Nenhuma recompensa configurada ainda.</p>}
+          {dados.recompensas.map((r, i) => (
+            <div key={i} style={{ padding: 14, borderRadius: 10, border: r.desbloqueada ? '1.5px solid #F2C94C' : '1.5px solid #eee', background: r.desbloqueada ? '#FFFBEB' : '#FAFAFA', marginBottom: 10, opacity: r.desbloqueada ? 1 : 0.6 }}>
+              <p style={{ margin: 0, fontWeight: 'bold', fontSize: 14 }}>{r.emoji} {r.titulo} {r.desbloqueada ? '🔓' : '🔒'}</p>
+              {r.descricao && <p style={{ margin: '4px 0 0 0', fontSize: 12, color: '#888' }}>{r.descricao}</p>}
+              <p style={{ margin: '4px 0 0 0', fontSize: 11, color: '#aaa' }}>{r.pontos_necessarios} pontos</p>
+            </div>
+          ))}
         </div>
-      ))}
+      )}
+
+      {aba === 'historico' && (
+        <div>
+          {dados.historico.length === 0 && <p style={{ color: '#888', fontSize: 13 }}>Nenhum ponto ainda — responda uma atividade!</p>}
+          {dados.historico.map((h, i) => (
+            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 14px', borderBottom: '1px solid #f2f2f2' }}>
+              <div>
+                <p style={{ margin: 0, fontSize: 13 }}>{iconePorOrigem[h.origem] || '•'} {h.descricao}</p>
+                <p style={{ margin: 0, fontSize: 10.5, color: '#aaa' }}>{new Date(h.criado_em).toLocaleString('pt-BR')}</p>
+              </div>
+              <p style={{ margin: 0, fontWeight: 'bold', fontSize: 14, color: h.pontos >= 0 ? '#2ECC71' : '#C93B26' }}>{h.pontos >= 0 ? '+' : ''}{h.pontos}</p>
+            </div>
+          ))}
+        </div>
+      )}
     </main>
   );
 }
