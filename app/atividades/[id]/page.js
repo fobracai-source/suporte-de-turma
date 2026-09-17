@@ -14,6 +14,7 @@ export default function PaginaResponderAtividade() {
   const [respostas, setRespostas] = useState([]);
   const [avaliacao, setAvaliacao] = useState(0);
   const [observacoes, setObservacoes] = useState('');
+  const [feedbackAula, setFeedbackAula] = useState('');
   const [arquivosSelecionados, setArquivosSelecionados] = useState([]);
   const [enviandoArquivos, setEnviandoArquivos] = useState(false);
   const [alunoId, setAlunoId] = useState(null);
@@ -99,6 +100,10 @@ export default function PaginaResponderAtividade() {
       setErro('Responda todas as questões antes de enviar.');
       return;
     }
+    if (!avaliacao || avaliacao < 1) {
+      setErro('Aluno, é obrigatório avaliar a aula!');
+      return;
+    }
 
     setEnviando(true);
     try {
@@ -115,7 +120,7 @@ export default function PaginaResponderAtividade() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${accessToken}`
         },
-        body: JSON.stringify({ atividadeId, respostas, avaliacao, observacoes, arquivos: caminhosArquivos })
+        body: JSON.stringify({ atividadeId, respostas, avaliacao, observacoes, arquivos: caminhosArquivos, feedbackAula })
       });
       const dados = await resposta.json();
 
@@ -255,6 +260,34 @@ export default function PaginaResponderAtividade() {
             {arquivosSelecionados.length} arquivo(s) selecionado(s)
           </p>
         )}
+      </div>
+
+      <div style={{ ...estiloCartao, border: !avaliacao ? '1.5px solid #FF7A59' : '1.5px solid #eee' }}>
+        <p style={{ margin: '0 0 4px 0', fontWeight: 'bold', fontSize: 14 }}>
+          Avalie essa aula <span style={{ color: '#FF7A59' }}>*obrigatório</span>
+        </p>
+        <p style={{ margin: '0 0 10px 0', fontSize: 12, color: '#888' }}>Sua opinião ajuda o professor a melhorar as próximas aulas.</p>
+        <div style={{ display: 'flex', gap: 6 }}>
+          {[1, 2, 3, 4, 5].map((n) => (
+            <button
+              key={n}
+              type="button"
+              onClick={() => setAvaliacao(n)}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 34, padding: 0, lineHeight: 1 }}>
+              {n <= avaliacao ? '⭐' : '☆'}
+            </button>
+          ))}
+        </div>
+        {avaliacao > 0 && <p style={{ margin: '8px 0 0 0', fontSize: 12, color: '#6C5CE7', fontWeight: 'bold' }}>{avaliacao * 20}% — obrigada pela avaliação!</p>}
+      </div>
+
+      <div style={estiloCartao}>
+        <p style={{ margin: '0 0 8px 0', fontWeight: 'bold', fontSize: 14 }}>Deixe um elogio, crítica ou sugestão para o professor <span style={{ fontWeight: 400, color: '#999' }}>(opcional)</span></p>
+        <textarea
+          value={feedbackAula}
+          onChange={(e) => setFeedbackAula(e.target.value)}
+          style={{ width: '100%', minHeight: 70, padding: 10, borderRadius: 8, border: '1.5px solid #ddd', boxSizing: 'border-box' }}
+        />
       </div>
 
       <button onClick={enviar} disabled={enviando} style={{ width: '100%', padding: 14, borderRadius: 8, border: 'none', background: '#6C5CE7', color: 'white', fontWeight: 'bold', fontSize: 15, cursor: 'pointer' }}>
