@@ -6,6 +6,7 @@
 // 3) Registra o pódio no histórico, e avisa os vencedores por e-mail.
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { enviarEmail, escolherEmailValido } from '@/lib/email';
+import { verificarEPremiarMissoes } from '@/lib/gamificacao';
 import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
@@ -61,6 +62,7 @@ export async function GET(req) {
         });
         await supabaseAdmin.rpc('incrementar_pontos_aluno', { p_aluno_id: aluno.id, p_pontos: 150 });
         bonusOcorrenciaDados++;
+        await verificarEPremiarMissoes(aluno.id);
       }
     }
 
