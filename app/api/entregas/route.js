@@ -42,9 +42,12 @@ export async function POST(req) {
     return NextResponse.json({ ok: false, erro: 'Essa conta não é de um aluno.' }, { status: 403 });
   }
 
-  const { atividadeId, respostas, avaliacao, observacoes, arquivos } = await req.json();
+  const { atividadeId, respostas, avaliacao, observacoes, arquivos, feedbackAula } = await req.json();
   if (!atividadeId) {
     return NextResponse.json({ ok: false, erro: 'Atividade não informada.' }, { status: 400 });
+  }
+  if (!avaliacao || avaliacao < 1 || avaliacao > 5) {
+    return NextResponse.json({ ok: false, erro: 'Aluno, é obrigatório avaliar a aula!' }, { status: 400 });
   }
 
   const { data: tentativasAnteriores, error: erroContagem } = await supabaseAdmin
@@ -93,6 +96,7 @@ export async function POST(req) {
       avaliacao: avaliacao || null,
       arquivos: arquivos || [],
       observacoes: observacoes || null,
+      feedback_aula: feedbackAula || null,
       nota_calculada: notaDestaTentativa
     });
 
